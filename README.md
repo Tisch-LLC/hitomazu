@@ -1,18 +1,32 @@
-# app
+# 実家のこれから（仮）
 
-Built with Claude: Japan 2026 の提出用アプリです（作品の内容は準備中）。
+遠方に住んでいて、地方の実家を相続した人のための手続きナビです。Built with Claude: Japan 2026 の提出作品として制作中です。
+
+状況を入力すると、その人にとって「最低限やること」を次の4つに分けて示します。
+
+- **期限があるもの**：相続放棄（3か月）、準確定申告（4か月）、相続税（10か月）、相続登記（3年）、農地・森林の届出、空き家の3,000万円特別控除の売却期限
+- **遠隔でできるもの**：戸籍の広域交付、登記事項証明書のオンライン請求、固定資産税の通知の送り先変更など
+- **次の帰省でやるもの**：書類探し、写真撮影、鍵、家財、近所への挨拶など
+- **放置しないための管理**：見回り、管理不全空家の勧告を避ける
+
+各項目には、国や自治体の案内ページを根拠として付けています。
+
+## 設計の方針
+
+- チェックリストの中身は、出典を確認した固定データ（`src/domain/checklist.ts`）として持ちます。
+- 当てはまるかどうかと期限の日付は、プログラムで計算します（`src/domain/dates.ts`）。単体テストで確かめています。
+- 入力した内容は、ブラウザの中（localStorage）だけに保存します。
+- このアプリは手続きの漏れを防ぐためのもので、法律・税務の判断を代わりに行うものではありません。
 
 ## 構成
 
 ```text
-package.json / bun.lock   # 依存関係
-build.ts                  # 静的ビルド（bun run build → dist/）
-src/index.ts              # Bun.serve によるサーバーとAPIルート
-src/index.html            # フロントエンドのHTML入口
-src/frontend.tsx          # React のマウント
-src/App.tsx               # React コンポーネント（現状は雛形のサンプル）
-src/APITester.tsx         # 雛形のAPI動作確認用コンポーネント
-src/index.css             # Tailwind CSS
+src/index.ts                 # Bun.serve によるサーバー
+src/index.html, frontend.tsx # フロントエンドの入口
+src/App.tsx                  # 画面全体（はじめに → 状況の入力とやることリスト）
+src/components/              # 状況の入力フォーム、やることリスト
+src/domain/                  # チェックリストのデータ、期限の計算、状況の型、デモ用の架空データ
+src/storage.ts               # ブラウザへの保存
 ```
 
 React 19、Tailwind CSS 4、TypeScript を使い、サーバーとフロントエンドを Bun の1プロセスで動かします。
@@ -24,9 +38,10 @@ React 19、Tailwind CSS 4、TypeScript を使い、サーバーとフロント�
 ```bash
 bun install   # 依存関係のインストール
 bun dev       # 開発サーバー（ホットリロード）
+bun test      # 単体テスト
+bun check     # 型チェック
 bun run build # dist/ へビルド
 bun start     # 本番モードで起動
-bun check     # 型チェック
 ```
 
 秘密情報（APIキーなど）は `.env` に置きます。`.env` はコミットされません。
