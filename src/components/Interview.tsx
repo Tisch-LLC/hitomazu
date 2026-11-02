@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatJapaneseDate, isISODate } from "../domain/dates";
-import { questionTitle, visibleQuestions, type Question } from "../domain/interview";
+import { visibleQuestions, type Question } from "../domain/interview";
 import type { Profile } from "../domain/profile";
 
 interface Props {
@@ -74,19 +74,19 @@ export function Interview({ profile, onChange, onFinish, onCancel }: Props) {
     <div className="mx-auto max-w-xl py-8 sm:py-12">
       <div className="flex items-center justify-between text-sm text-muted">
         <span className="font-semibold text-accent">{q.section}</span>
-        <span>{profile.isInheritance === "unknown" ? `質問 ${index + 1}` : `${index + 1} / ${questions.length}`}</span>
+        <span>{profile.situation === null ? `質問 ${index + 1}` : `${index + 1} / ${questions.length}`}</span>
       </div>
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-subtle" aria-hidden>
         <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${progress}%` }} />
       </div>
 
-      <h2 className="mt-8 text-2xl font-bold leading-snug text-ink">{questionTitle(q, profile)}</h2>
+      <h2 className="mt-8 text-2xl font-bold leading-snug text-ink">{q.title}</h2>
       {q.help && <p className="mt-2 text-muted">{q.help}</p>}
 
       <div className="mt-8">
-        {q.kind === "tri" && (
+        {(q.kind === "tri" || q.kind === "situation") && (
           <div className="grid gap-3">
-            {q.options.map((o) => (
+            {(q.options as { value: string; label: string; description?: string }[]).map((o) => (
               <button
                 key={o.value}
                 type="button"
@@ -141,7 +141,7 @@ export function Interview({ profile, onChange, onFinish, onCancel }: Props) {
         <button type="button" onClick={back} className="text-sm text-muted hover:text-ink">
           ← 戻る
         </button>
-        {q.field !== "isInheritance" && (
+        {q.field !== "situation" && (
           <button type="button" onClick={skip} className="text-sm text-muted hover:text-ink">
             分からないので、あとで答える →
           </button>

@@ -5,7 +5,7 @@ import type { Profile } from "./profile";
  * 東京に住む会社員が、松江市の実家を相続したという設定。
  */
 export const SAMPLE_PROFILE: Profile = {
-  isInheritance: "yes",
+  situation: "inherited",
   ownerCanDecide: "unknown",
   deathDate: "2026-09-20",
   knownDate: null,

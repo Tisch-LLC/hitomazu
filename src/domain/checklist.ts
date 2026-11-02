@@ -8,7 +8,15 @@ import {
   yearOf,
   type ISODate,
 } from "./dates";
-import { basicDeductionManYen, effectiveKnownDate, type Profile, type Tri } from "./profile";
+import {
+  basicDeductionManYen,
+  effectiveKnownDate,
+  isInherited,
+  type Profile,
+  type Situation,
+  type Tri,
+  type TriField,
+} from "./profile";
 
 /**
  * 遠方の実家を相続した人の「最低限やること」チェックリスト。
@@ -18,12 +26,13 @@ import { basicDeductionManYen, effectiveKnownDate, type Profile, type Tri } from
  * 制度の内容は 2026-11-02 時点で確認したもの。個別の判断は専門家・窓口で確認する前提。
  */
 
-export type Group = "deadline" | "remote" | "onsite" | "manage";
+export type Group = "deadline" | "remote" | "onsite" | "plan" | "manage";
 
 export const GROUPS: { id: Group; title: string; description: string }[] = [
   { id: "deadline", title: "期限があるもの", description: "過ぎると選べなくなる、または過料などの対象になる手続き" },
   { id: "remote", title: "遠隔でできるもの", description: "帰省しなくても、郵送・オンライン・電話で進められること" },
   { id: "onsite", title: "次の帰省でやるもの", description: "現地でしかできないこと。限られた帰省で漏れなく済ませる" },
+  { id: "plan", title: "これからの方針を考える", description: "残す・売る・貸す・解体するなど、実家をどうするかを決めるための準備" },
   { id: "manage", title: "放置しないための管理", description: "方針が決まるまでの間、実家を傷めず、税負担を増やさないために" },
 ];
 
@@ -46,13 +55,19 @@ export interface Deadline {
   note: string;
 }
 
-/** inheritance：相続のときだけ表示／owner_alive：持ち主が存命（相続でない）ときだけ表示／省略：常に表示 */
-export type Scope = "inheritance" | "owner_alive";
+/** リストの上で「はい・いいえ」で答えられる追加の質問 */
+export interface FollowUp {
+  field: TriField;
+  question: string;
+}
 
 export interface ChecklistItem {
   id: string;
   group: Group;
-  scope?: Scope;
+  /** この項目を表示する状況。省略するとすべての状況で表示する */
+  situations?: Situation[];
+  /** 「要確認」のときに、リストの上で答えられる質問 */
+  followUps?: FollowUp[];
   title: string;
   /** 何をするか、なぜ必要か */
   summary: string;
@@ -111,6 +126,11 @@ const SRC = {
     url: "https://www.kkr.mlit.go.jp/kensei/jutaku/ol9a8v0000035gqj-att/ol9a8v000004n1co.pdf",
   },
   matsue: { label: "松江市 公式サイト", url: "https://www.city.matsue.lg.jp/" },
+  shizuokaNouchi: {
+    label: "農地法（第3条、第4条、第5条）に関する手続きのご案内（静岡市・案内例）",
+    url: "https://www.city.shizuoka.lg.jp/000_006310.html",
+  },
+  kyotoTenyou: { label: "農地の取得・転用（京都府・案内例）", url: "https://www.pref.kyoto.jp/chutan/kichou/nouchi.html" },
   mhlwKouken: { label: "成年後見はやわかり（厚生労働省）", url: "https://guardianship.mhlw.go.jp/" },
   mhlwHouteiKouken: {
     label: "法定後見制度とは（厚生労働省）",
@@ -139,6 +159,11 @@ function triEvaluate(
   return { status: "check", reason: texts.unknown };
 }
 
+const INHERITED: Situation[] = ["inherited"];
+const OWNER_ALIVE: Situation[] = ["owner_moved", "owner_living"];
+/** 実家に誰も住んでいない状況 */
+const VACANT: Situation[] = ["inherited", "owner_moved", "already_owned"];
+
 /** 相続登記の義務化（2024年4月1日施行）より前に開始した相続の猶予期限 */
 const TOUKI_TRANSITION_DEADLINE: ISODate = "2027-03-31";
 const TOUKI_ENFORCEMENT_DATE: ISODate = "2024-04-01";
@@ -149,7 +174,8 @@ export const CHECKLIST: ChecklistItem[] = [
   // ───────────── 期限があるもの ─────────────
   {
     id: "inheritance-decision",
-    scope: "inheritance",
+    situations: INHERITED,
+    followUps: [{ field: "debtConcern", question: "亡くなった方に、借金や保証人になっている心配はありますか？" }],
     group: "deadline",
     title: "相続するか、放棄するかを決める",
     summary:
@@ -185,7 +211,8 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "jun-kakutei",
-    scope: "inheritance",
+    situations: INHERITED,
+    followUps: [{ field: "deceasedHadIncome", question: "亡くなった方は、毎年確定申告をしていましたか？" }],
     group: "deadline",
     title: "亡くなった人の所得税の申告（準確定申告）",
     summary:
@@ -210,7 +237,8 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "souzokuzei",
-    scope: "inheritance",
+    situations: INHERITED,
+    followUps: [{ field: "estateMayExceedBasic", question: "預金や不動産などの遺産は、合計で基礎控除を超えそうですか？" }],
     group: "deadline",
     title: "相続税の申告",
     summary:
@@ -238,7 +266,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "souzoku-touki",
-    scope: "inheritance",
+    situations: INHERITED,
     group: "deadline",
     title: "相続登記（実家の名義を変える）",
     summary:
@@ -268,7 +296,8 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "nouchi-todoke",
-    scope: "inheritance",
+    situations: INHERITED,
+    followUps: [{ field: "hasFarmland", question: "実家の土地に、田や畑は含まれますか？" }],
     group: "deadline",
     title: "農地を相続したときの届出",
     summary:
@@ -291,7 +320,8 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "shinrin-todoke",
-    scope: "inheritance",
+    situations: INHERITED,
+    followUps: [{ field: "hasForest", question: "実家の土地に、山林は含まれますか？" }],
     group: "deadline",
     title: "森林の土地の所有者届出",
     summary:
@@ -313,7 +343,11 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "akiya-special",
-    scope: "inheritance",
+    situations: INHERITED,
+    followUps: [
+      { field: "builtOld", question: "昭和56年（1981年）5月より前に建てられた家ですか？" },
+      { field: "deceasedLivedAlone", question: "亡くなる直前、その方は実家で一人暮らしでしたか？" },
+    ],
     group: "deadline",
     title: "実家を売るなら：空き家の3,000万円特別控除の期限",
     summary:
@@ -352,7 +386,8 @@ export const CHECKLIST: ChecklistItem[] = [
   // ───────────── 遠隔でできるもの ─────────────
   {
     id: "owner-decision",
-    scope: "owner_alive",
+    situations: OWNER_ALIVE,
+    followUps: [{ field: "ownerCanDecide", question: "持ち主は、自分で契約などを判断できる状態ですか？" }],
     group: "remote",
     title: "持ち主の意向を確かめ、判断できるうちに方針を話し合う",
     summary:
@@ -378,7 +413,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "will",
-    scope: "inheritance",
+    situations: INHERITED,
     group: "remote",
     title: "遺言書があるか確認する",
     summary: "遺言書があるかどうかで、誰が実家を相続するかの決め方が変わります。自宅での保管のほか、公証役場や法務局に保管されている場合があります。",
@@ -392,7 +427,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "koseki",
-    scope: "inheritance",
+    situations: INHERITED,
     group: "remote",
     title: "戸籍を集めて、相続人を確定する",
     summary:
@@ -418,7 +453,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "assets-debts",
-    scope: "inheritance",
+    situations: INHERITED,
     group: "remote",
     title: "財産と借金の全体をつかむ",
     summary: "預金・不動産・有価証券と、ローン・借金・保証人になっていないかを調べます。相続放棄や相続税の判断材料になります。",
@@ -433,6 +468,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "tax-notice",
+    situations: ["inherited", "owner_moved"],
     group: "remote",
     title: "固定資産税の納税通知書が、確実に届くようにする",
     summary:
@@ -440,7 +476,7 @@ export const CHECKLIST: ChecklistItem[] = [
     where: "実家のある市町村の資産税担当窓口（郵送で届け出られることが多い）",
     sources: [SRC.matsue],
     evaluate(p) {
-      if (p.isInheritance === "yes") {
+      if (isInherited(p)) {
         return { status: "applies", reason: "亡くなった人宛ての通知は、相続人が受け取れるように届け出る必要があります。" };
       }
       return { status: "applies", reason: "持ち主が実家に住んでいないと、通知が誰にも読まれないまま届き続けます。" };
@@ -448,6 +484,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "mail",
+    situations: VACANT,
     group: "remote",
     title: "実家に届く郵便物の受け取り方を決める",
     summary: "請求書や契約の通知が実家に届き続けると、気づかないうちに滞納や契約の自動更新が起きます。各契約先に送付先の変更を依頼します。",
@@ -459,6 +496,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "utilities",
+    situations: VACANT,
     group: "remote",
     title: "電気・ガス・水道・電話の契約を見直す",
     summary:
@@ -471,6 +509,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "insurance",
+    situations: VACANT,
     group: "remote",
     title: "火災保険の契約者と内容を確認する",
     summary: "空き家になると、保険の条件が変わったり、契約を続けられなかったりする場合があります。契約者の変更と、空き家としての補償内容を保険会社に確認します。",
@@ -487,7 +526,7 @@ export const CHECKLIST: ChecklistItem[] = [
     summary: "市町村・業者・近所からの連絡を誰が受けるか、費用を誰がどう負担するかを決めます。相続の場合は、遺産分割の話し合いの前でも窓口だけは決めておくと手続きが止まりません。",
     sources: [],
     evaluate(p) {
-      if (p.isInheritance !== "yes") {
+      if (!isInherited(p)) {
         return { status: "applies", reason: "持ち主に代わって連絡を受ける人を決めておくと、何かあったときにすぐ動けます。" };
       }
       if (p.heirsCount === 1) return { status: "not_applicable", reason: "相続人が1人のため、窓口はご自身です。" };
@@ -495,25 +534,13 @@ export const CHECKLIST: ChecklistItem[] = [
       return { status: "applies", reason: `相続人が${p.heirsCount}人いるため、連絡の窓口と費用の分担を決めておく必要があります。` };
     },
   },
-  {
-    id: "akiya-window",
-    group: "remote",
-    title: "実家のある市町村の空き家相談窓口・空き家バンクを調べる",
-    summary: "空き家の相談窓口、空き家バンク、解体や改修の補助金がある市町村も多くあります。帰省の前に電話で相談の予約をしておくと、現地での時間を有効に使えます。",
-    where: "実家のある市町村の空き家対策担当",
-    sources: [SRC.matsue],
-    evaluate() {
-      return { status: "applies", reason: "売る・貸す・解体するなど、どの方針でも使える支援を先に知っておけます。" };
-    },
-  },
-
   // ───────────── 次の帰省でやるもの ─────────────
   {
     id: "onsite-documents",
     group: "onsite",
-    title: "書類を探して持ち帰る",
+    title: "大事な書類の場所を確認する",
     summary:
-      "権利証（登記識別情報）、固定資産税の納税通知書、建物を建てたときの書類（確認済証・図面）、測量図・境界の書類、保険証券、ローンや借金の書類、通帳・印鑑を探します。",
+      "持ち主が住んでいる場合は、保管場所を一緒に確認しておきます。空き家なら探して持ち帰ります。権利証（登記識別情報）、固定資産税の納税通知書、建物を建てたときの書類（確認済証・図面）、測量図・境界の書類、保険証券、ローンや借金の書類、通帳・印鑑を探します。",
     tips: ["見つけた場所も記録しておくと、親族と共有しやすくなります。", "建てた年が分かる書類は、空き家特例の判断に使えます。"],
     sources: [],
     evaluate() {
@@ -533,6 +560,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "onsite-keys",
+    situations: VACANT,
     group: "onsite",
     title: "鍵の本数を確認し、誰が持つか決める",
     summary: "玄関・勝手口・倉庫などの鍵を数えます。見回りを頼む人や業者に預ける場合に備えます。",
@@ -554,6 +582,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "onsite-neighbors",
+    situations: VACANT,
     group: "onsite",
     title: "近所・自治会に挨拶し、連絡先を伝える",
     summary: "何かあったとき（倒木、雨漏り、不審者など）に連絡をもらえるよう、連絡先を伝えます。自治会費や地域の共有地の扱いも確認します。",
@@ -564,6 +593,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "onsite-shutdown",
+    situations: VACANT,
     group: "onsite",
     title: "帰る前に戸締まりと設備を確認する",
     summary: "ブレーカー、水道の元栓（冬は水抜き）、ガスの元栓、窓・雨戸の施錠を確認します。冷蔵庫の中身など、傷む物を残さないようにします。",
@@ -573,9 +603,85 @@ export const CHECKLIST: ChecklistItem[] = [
     },
   },
 
+  // ───────────── これからの方針を考える ─────────────
+  {
+    id: "plan-wishes",
+    situations: ["inherited", "already_owned"],
+    group: "plan",
+    title: "家族で、実家をどうしたいかを話し合う",
+    summary:
+      "自分や親族が使う、売る、貸す、空き家バンクに登録する、解体する、管理を続けるなどの選択肢があります。仏壇やお墓、思い出の品の扱いも含めて、家族の希望を先に整理しておくと、業者や窓口に相談するときに話が早く進みます。",
+    sources: [],
+    evaluate() {
+      return { status: "applies", reason: "方針が決まらないまま時間がたつと、管理の負担と建物の傷みが増えていきます。" };
+    },
+  },
+  {
+    id: "plan-condition",
+    group: "plan",
+    title: "建物の状態から、使い続けられるかの目安をつける",
+    summary:
+      "住む・貸す・売るのどれが現実的かは、建物の状態で大きく変わります。雨漏り、床や柱の傷み、シロアリ、水回りの故障などを確認します。昭和56年（1981年）5月以前に建てられた家は、今の耐震基準より前の建物です。",
+    where: "実家のある市町村の建築・住宅担当（耐震診断や改修の補助がある場合があります）",
+    followUps: [{ field: "builtOld", question: "昭和56年（1981年）5月より前に建てられた家ですか？" }],
+    sources: [],
+    evaluate(p) {
+      if (p.builtOld === "yes") {
+        return {
+          status: "applies",
+          reason: "今の耐震基準より前の建物です。住む・貸す場合は、耐震診断や改修の補助がないか市町村に確認してください。",
+        };
+      }
+      if (p.builtOld === "no") {
+        return { status: "applies", reason: "今の耐震基準の建物です。傷みの程度を確認して、使い続けられるか判断します。" };
+      }
+      return { status: "check", reason: "建てた時期が分かると、耐震面の注意点が分かります。" };
+    },
+  },
+  {
+    id: "plan-land",
+    group: "plan",
+    title: "田畑・山林がある場合の手続きを確認する",
+    summary:
+      "田や畑を、農地のまま売る・貸すには農業委員会の許可が必要です（農地法第3条）。駐車場や宅地にするには、転用の許可が必要です（第4条・第5条。市街化区域では届出）。山林を売る・活用する場合も、市町村への届出などが関わります。",
+    where: "土地がある市町村の農業委員会、林務担当",
+    followUps: [
+      { field: "hasFarmland", question: "実家の土地に、田や畑は含まれますか？" },
+      { field: "hasForest", question: "実家の土地に、山林は含まれますか？" },
+    ],
+    sources: [SRC.shizuokaNouchi, SRC.kyotoTenyou, SRC.rinyaTodoke],
+    evaluate(p) {
+      if (p.hasFarmland === "yes" || p.hasForest === "yes") {
+        const kinds = [p.hasFarmland === "yes" ? "田・畑" : null, p.hasForest === "yes" ? "山林" : null].filter(Boolean);
+        return {
+          status: "applies",
+          reason: `${kinds.join("と")}が含まれるため、建物とは別に、売る・貸す・転用するときの手続きが必要です。`,
+        };
+      }
+      if (p.hasFarmland === "no" && p.hasForest === "no") {
+        return { status: "not_applicable", reason: "田・畑や山林は含まれないと回答されています。" };
+      }
+      return { status: "check", reason: "登記事項証明書の「地目」で、田・畑や山林が含まれるか確認できます。" };
+    },
+  },
+  {
+    id: "plan-local",
+    group: "plan",
+    title: "地元の相談先を見つける",
+    summary:
+      "実家のある市町村の空き家相談窓口、空き家バンク、地元の不動産業者などに相談します。1か所だけでなく2〜3か所に同じ情報（写真・登記の内容・希望）で相談すると、提案の違いを比べられます。解体や改修の補助金がある市町村も多くあります。",
+    where: "実家のある市町村の空き家対策担当、地元の不動産業者",
+    tips: ["帰省の前に電話で相談の予約をしておくと、現地での時間を有効に使えます。"],
+    sources: [SRC.matsue],
+    evaluate() {
+      return { status: "applies", reason: "遠方からでは地元の事情が分かりにくいため、地元に詳しい相談先が必要です。" };
+    },
+  },
+
   // ───────────── 放置しないための管理 ─────────────
   {
     id: "patrol",
+    situations: VACANT,
     group: "manage",
     title: "定期的に見回る方法を決める",
     summary: "自分の帰省、親族、近所の人、空き家管理サービスなどの中から、誰がどのくらいの頻度で見回るかを決めます。換気・通水・郵便物の回収・庭木の手入れが主な作業です。",
@@ -586,6 +692,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "kanri-fuzen",
+    situations: VACANT,
     group: "manage",
     title: "「管理不全空家」にならないようにする",
     summary:
@@ -604,11 +711,10 @@ export interface EvaluatedItem {
   deadline: Deadline | null;
 }
 
-/** 相続かどうかの回答に合わせて、表示する項目を選ぶ。 */
+/** 実家の状況に合わせて、表示する項目を選ぶ。状況が未回答なら、すべての状況に共通の項目だけ。 */
 export function isInScope(item: ChecklistItem, p: Profile): boolean {
-  if (item.scope === "inheritance") return p.isInheritance === "yes";
-  if (item.scope === "owner_alive") return p.isInheritance === "no";
-  return true;
+  if (!item.situations) return true;
+  return p.situation !== null && item.situations.includes(p.situation);
 }
 
 export function evaluateChecklist(profile: Profile): EvaluatedItem[] {
@@ -624,7 +730,7 @@ const STATUS_ORDER: Record<Applicability, number> = { applies: 0, check: 0, not_
 
 /** グループごとに、対象外を後ろに、期限の早い順に並べる。 */
 export function groupEvaluated(items: EvaluatedItem[]): Record<Group, EvaluatedItem[]> {
-  const result: Record<Group, EvaluatedItem[]> = { deadline: [], remote: [], onsite: [], manage: [] };
+  const result: Record<Group, EvaluatedItem[]> = { deadline: [], remote: [], onsite: [], plan: [], manage: [] };
   for (const e of items) result[e.item.group].push(e);
   for (const group of Object.keys(result) as Group[]) {
     result[group].sort((a, b) => {

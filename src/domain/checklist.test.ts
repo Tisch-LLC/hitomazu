@@ -20,9 +20,9 @@ test("出典のURLはすべて https", () => {
   }
 });
 
-const INHERITED: Profile = { ...EMPTY_PROFILE, isInheritance: "yes" };
+const INHERITED: Profile = { ...EMPTY_PROFILE, situation: "inherited" };
 
-describe("相続かどうかで表示する項目が変わる", () => {
+describe("実家の状況で表示する項目が変わる", () => {
   const ids = (p: Profile) => evaluateChecklist(p).map((e) => e.item.id);
 
   test("相続のときだけ、相続の項目が出る", () => {
@@ -31,13 +31,29 @@ describe("相続かどうかで表示する項目が変わる", () => {
     expect(ids(INHERITED)).not.toContain("owner-decision");
   });
 
-  test("相続でないときは、相続の項目が出ず、持ち主の意向の項目が出る", () => {
-    const p: Profile = { ...EMPTY_PROFILE, isInheritance: "no" };
+  test("持ち主が施設に移った場合：相続の項目は出ず、持ち主の意向と空き家の管理が出る", () => {
+    const p: Profile = { ...EMPTY_PROFILE, situation: "owner_moved" };
     expect(ids(p)).not.toContain("inheritance-decision");
     expect(ids(p)).not.toContain("souzoku-touki");
-    expect(ids(p)).not.toContain("akiya-special");
     expect(ids(p)).toContain("owner-decision");
-    expect(ids(p)).toContain("onsite-photos");
+    expect(ids(p)).toContain("patrol");
+    expect(ids(p)).toContain("plan-local");
+  });
+
+  test("持ち主が住んでいる場合：空き家の管理の項目は出ない", () => {
+    const p: Profile = { ...EMPTY_PROFILE, situation: "owner_living" };
+    expect(ids(p)).toContain("owner-decision");
+    expect(ids(p)).not.toContain("patrol");
+    expect(ids(p)).not.toContain("onsite-keys");
+    expect(ids(p)).toContain("onsite-documents");
+  });
+
+  test("すでに自分の名義の場合：相続の項目も持ち主の項目も出ず、方針と管理が出る", () => {
+    const p: Profile = { ...EMPTY_PROFILE, situation: "already_owned" };
+    expect(ids(p)).not.toContain("inheritance-decision");
+    expect(ids(p)).not.toContain("owner-decision");
+    expect(ids(p)).toContain("plan-wishes");
+    expect(ids(p)).toContain("patrol");
   });
 
   test("まだ答えていないときは、共通の項目だけ", () => {
@@ -47,9 +63,28 @@ describe("相続かどうかで表示する項目が変わる", () => {
   });
 
   test("持ち主が判断できない状態なら、成年後見に触れる", () => {
-    const p: Profile = { ...EMPTY_PROFILE, isInheritance: "no", ownerCanDecide: "no" };
+    const p: Profile = { ...EMPTY_PROFILE, situation: "owner_moved", ownerCanDecide: "no" };
     expect(find(p, "owner-decision").evaluation.reason).toContain("成年後見");
   });
+});
+
+describe("田畑・山林の手続き（どの状況でも出る）", () => {
+  test("田畑があれば対象", () => {
+    const p: Profile = { ...EMPTY_PROFILE, situation: "owner_moved", hasFarmland: "yes" };
+    expect(find(p, "plan-land").evaluation.status).toBe("applies");
+  });
+
+  test("田畑も山林もなければ対象外", () => {
+    const p: Profile = { ...EMPTY_PROFILE, hasFarmland: "no", hasForest: "no" };
+    expect(find(p, "plan-land").evaluation.status).toBe("not_applicable");
+  });
+});
+
+test("要確認の項目には、その場で答えられる質問がある", () => {
+  for (const id of ["jun-kakutei", "souzokuzei", "akiya-special", "nouchi-todoke", "shinrin-todoke"]) {
+    const e = find(INHERITED, id);
+    expect(e.item.followUps?.length ?? 0).toBeGreaterThan(0);
+  }
 });
 
 describe("相続で、日付をまだ入力していないとき", () => {

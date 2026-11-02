@@ -1,19 +1,23 @@
-import { basicDeductionManYen, type Profile, type Tri } from "./profile";
+import {
+  isInherited,
+  isOwnerAlive,
+  SITUATION_LABELS,
+  type Profile,
+  type Situation,
+  type Tri,
+  type TriField,
+} from "./profile";
 
 /**
- * 最初の聞き取り。1画面に1問ずつ、できるだけ「はい／いいえ」で答えられるようにする。
- * 相続かどうかで、その後に聞く質問を変える。
+ * 最初の聞き取り。1画面に1問ずつ、できるだけ選択肢で答えられるようにする。
+ * 最初に実家の状況を聞き、状況に応じて質問を変える。
+ * 細かい条件（確定申告、遺産の額など）は最初には聞かず、やることリストの該当項目の上で答えてもらう。
  */
-
-type TriField = {
-  [K in keyof Profile]: Profile[K] extends Tri ? K : never;
-}[keyof Profile];
 
 interface BaseQuestion {
   id: string;
-  section: "はじめに" | "相続のこと" | "実家のこと" | "あなたのこと";
-  /** 質問文。回答済みの内容で変わる場合は関数にする */
-  title: string | ((p: Profile) => string);
+  section: "はじめに" | "相続のこと" | "持ち主のこと" | "実家のこと" | "あなたのこと";
+  title: string;
   help?: string;
   /** この質問を出す条件。省略すると常に出す */
   when?: (p: Profile) => boolean;
@@ -26,10 +30,11 @@ export interface ChoiceOption<V> {
 }
 
 export type Question =
+  | (BaseQuestion & { kind: "situation"; field: "situation"; options: ChoiceOption<Situation>[] })
   | (BaseQuestion & { kind: "tri"; field: TriField; options: ChoiceOption<Tri>[] })
   | (BaseQuestion & { kind: "date"; field: "deathDate" | "nextVisit" })
   | (BaseQuestion & { kind: "count"; field: "heirsCount" })
-  | (BaseQuestion & { kind: "text"; field: "propertyAddress" | "userResidence"; placeholder: string });
+  | (BaseQuestion & { kind: "text"; field: "propertyAddress"; placeholder: string });
 
 const YES_NO_UNKNOWN: ChoiceOption<Tri>[] = [
   { value: "yes", label: "はい" },
@@ -37,32 +42,43 @@ const YES_NO_UNKNOWN: ChoiceOption<Tri>[] = [
   { value: "unknown", label: "分からない" },
 ];
 
-const inherited = (p: Profile) => p.isInheritance === "yes";
-const ownerAlive = (p: Profile) => p.isInheritance === "no";
-
 export const QUESTIONS: Question[] = [
   {
-    id: "isInheritance",
+    id: "situation",
     section: "はじめに",
-    kind: "tri",
-    field: "isInheritance",
-    title: "親などが亡くなり、実家を相続しましたか？",
-    help: "手続きがまだでも、これから相続する予定なら「はい」を選んでください。",
+    kind: "situation",
+    field: "situation",
+    title: "実家は、いまどんな状況ですか？",
+    help: "いちばん近いものを選んでください。あとから変えられます。",
     options: [
-      { value: "yes", label: "はい、相続した（する予定）" },
       {
-        value: "no",
-        label: "いいえ、持ち主は存命",
-        description: "親が施設に入った、子の家に移ったなどで、実家が空いている場合",
+        value: "owner_moved",
+        label: SITUATION_LABELS.owner_moved,
+        description: "親が施設に入った、子どもの家に移った、入院が長引いているなど",
+      },
+      {
+        value: "owner_living",
+        label: SITUATION_LABELS.owner_living,
+        description: "親が一人で暮らしていて、この先どうするか考えておきたい",
+      },
+      {
+        value: "inherited",
+        label: SITUATION_LABELS.inherited,
+        description: "相続の手続きがまだでも、これから相続する予定ならこちら",
+      },
+      {
+        value: "already_owned",
+        label: SITUATION_LABELS.already_owned,
+        description: "相続や贈与の手続きは済んでいて、使い道を考えたい",
       },
     ],
   },
   {
     id: "ownerCanDecide",
-    section: "はじめに",
+    section: "持ち主のこと",
     kind: "tri",
     field: "ownerCanDecide",
-    when: ownerAlive,
+    when: isOwnerAlive,
     title: "実家の持ち主は、自分で契約などを判断できる状態ですか？",
     help: "認知症などで、自分で判断することが難しい場合は「いいえ」を選んでください。",
     options: YES_NO_UNKNOWN,
@@ -72,7 +88,7 @@ export const QUESTIONS: Question[] = [
     section: "相続のこと",
     kind: "date",
     field: "deathDate",
-    when: inherited,
+    when: isInherited,
     title: "亡くなった日はいつですか？",
     help: "相続放棄（3か月）などの期限の計算に使います。",
   },
@@ -81,7 +97,7 @@ export const QUESTIONS: Question[] = [
     section: "相続のこと",
     kind: "count",
     field: "heirsCount",
-    when: inherited,
+    when: isInherited,
     title: "相続人は、あなたを含めて何人ですか？",
     help: "亡くなった方の配偶者や子どもなどです。",
   },
@@ -90,41 +106,9 @@ export const QUESTIONS: Question[] = [
     section: "相続のこと",
     kind: "tri",
     field: "debtConcern",
-    when: inherited,
+    when: isInherited,
     title: "亡くなった方に、借金や、誰かの保証人になっている心配はありますか？",
     help: "借金が多い場合は、相続放棄を考えることになります。",
-    options: YES_NO_UNKNOWN,
-  },
-  {
-    id: "hasWill",
-    section: "相続のこと",
-    kind: "tri",
-    field: "hasWill",
-    when: inherited,
-    title: "遺言書はありますか？",
-    options: YES_NO_UNKNOWN,
-  },
-  {
-    id: "deceasedHadIncome",
-    section: "相続のこと",
-    kind: "tri",
-    field: "deceasedHadIncome",
-    when: inherited,
-    title: "亡くなった方は、毎年確定申告をしていましたか？",
-    help: "年金が一定額以上ある、事業や不動産の収入があった、などの場合です。",
-    options: YES_NO_UNKNOWN,
-  },
-  {
-    id: "estateMayExceedBasic",
-    section: "相続のこと",
-    kind: "tri",
-    field: "estateMayExceedBasic",
-    when: inherited,
-    title: (p) =>
-      p.heirsCount && p.heirsCount > 0
-        ? `預金や不動産などの遺産は、合計で${basicDeductionManYen(p.heirsCount).toLocaleString()}万円を超えそうですか？`
-        : "預金や不動産などの遺産は、合計で「3,000万円＋600万円×相続人の数」を超えそうですか？",
-    help: "超える場合は相続税の申告が必要です（相続税の基礎控除）。",
     options: YES_NO_UNKNOWN,
   },
   {
@@ -141,18 +125,8 @@ export const QUESTIONS: Question[] = [
     section: "実家のこと",
     kind: "tri",
     field: "builtOld",
-    when: inherited,
     title: "実家は、昭和56年（1981年）5月より前に建てられた家ですか？",
-    help: "耐震基準が変わる前の建物です。売るときの税金の特例に関わります。",
-    options: YES_NO_UNKNOWN,
-  },
-  {
-    id: "deceasedLivedAlone",
-    section: "実家のこと",
-    kind: "tri",
-    field: "deceasedLivedAlone",
-    when: inherited,
-    title: "亡くなる直前、その方は実家で一人暮らしでしたか？",
+    help: "今の耐震基準より前の建物かどうかで、住む・貸す・売るときの注意点が変わります。",
     options: YES_NO_UNKNOWN,
   },
   {
@@ -160,9 +134,8 @@ export const QUESTIONS: Question[] = [
     section: "実家のこと",
     kind: "tri",
     field: "hasFarmland",
-    when: inherited,
-    title: "相続する土地に、田や畑は含まれますか？",
-    help: "家の敷地の一部が、登記上は「畑」になっていることもあります。",
+    title: "実家の土地に、田や畑は含まれますか？",
+    help: "田畑を売る・貸す・駐車場にするには、農業委員会の許可などが必要です。家の敷地の一部が、登記上は「畑」になっていることもあります。",
     options: YES_NO_UNKNOWN,
   },
   {
@@ -170,17 +143,8 @@ export const QUESTIONS: Question[] = [
     section: "実家のこと",
     kind: "tri",
     field: "hasForest",
-    when: inherited,
-    title: "相続する土地に、山林は含まれますか？",
+    title: "実家の土地に、山林は含まれますか？",
     options: YES_NO_UNKNOWN,
-  },
-  {
-    id: "userResidence",
-    section: "あなたのこと",
-    kind: "text",
-    field: "userResidence",
-    title: "あなたはどこに住んでいますか？",
-    placeholder: "例：東京都",
   },
   {
     id: "nextVisit",
@@ -195,8 +159,4 @@ export const QUESTIONS: Question[] = [
 /** いまの回答で表示する質問 */
 export function visibleQuestions(p: Profile): Question[] {
   return QUESTIONS.filter((q) => !q.when || q.when(p));
-}
-
-export function questionTitle(q: Question, p: Profile): string {
-  return typeof q.title === "function" ? q.title(p) : q.title;
 }

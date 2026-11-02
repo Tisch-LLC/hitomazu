@@ -3,7 +3,7 @@ import { ChecklistView } from "./components/ChecklistView";
 import { Interview } from "./components/Interview";
 import { evaluateChecklist } from "./domain/checklist";
 import { formatJapaneseDate, todayISO } from "./domain/dates";
-import { EMPTY_PROFILE, type Profile } from "./domain/profile";
+import { EMPTY_PROFILE, SITUATION_LABELS, type Profile } from "./domain/profile";
 import { SAMPLE_PROFILE } from "./domain/sample";
 import { clearState, loadState, saveState, type Progress, type Stage } from "./storage";
 import "./index.css";
@@ -20,10 +20,12 @@ function Intro({ onStart, onSample }: { onStart: () => void; onSample: () => voi
         何から始めればいい？
       </h1>
       <p className="mt-5 leading-relaxed text-ink">
-        親が亡くなって実家を相続した。親が施設に入って実家が空いた。でも自分は遠くに住んでいて、帰れるのは年に数回だけ。
+        親が施設に入って、実家が空いた。親が一人で暮らしていて、この先が気になる。親が亡くなり、実家を相続した。
+        でも自分は遠くに住んでいて、帰れるのは年に数回だけ。
       </p>
       <p className="mt-3 leading-relaxed text-ink">
-        いくつかの質問に「はい・いいえ」で答えると、あなたの状況で<strong>最低限やること</strong>を、期限の近い順に示します。
+        いくつかの質問に答えると、あなたの状況で<strong>最低限やること</strong>を、
+        「遠くからできること」「次の帰省でやること」「これからの方針」に分けて示します。期限のある手続きがあれば、期限の近い順に並べます。
         各項目には、国や自治体の案内を根拠として付けています。
       </p>
       <div className="mt-8 flex flex-wrap gap-3">
@@ -41,11 +43,9 @@ function Intro({ onStart, onSample }: { onStart: () => void; onSample: () => voi
 
 function SituationSummary({ profile, onEdit }: { profile: Profile; onEdit: () => void }) {
   const facts: string[] = [];
-  if (profile.isInheritance === "yes") {
-    facts.push(profile.deathDate ? `${formatJapaneseDate(profile.deathDate)}に相続が開始` : "相続あり（亡くなった日は未回答）");
-    if (profile.heirsCount) facts.push(`相続人${profile.heirsCount}人`);
-  } else if (profile.isInheritance === "no") {
-    facts.push("持ち主は存命");
+  if (profile.situation) facts.push(SITUATION_LABELS[profile.situation]);
+  if (profile.situation === "inherited" && profile.deathDate) {
+    facts.push(`${formatJapaneseDate(profile.deathDate)}に相続が開始`);
   }
   if (profile.propertyAddress) facts.push(`実家：${profile.propertyAddress}`);
   if (profile.nextVisit) facts.push(`次の帰省：${formatJapaneseDate(profile.nextVisit)}`);
@@ -119,7 +119,7 @@ export function App() {
             profile={profile}
             onChange={setProfile}
             onFinish={() => setStage("result")}
-            onCancel={() => setStage(profile.isInheritance === "unknown" ? "intro" : "result")}
+            onCancel={() => setStage(profile.situation === null ? "intro" : "result")}
           />
         )}
         {stage === "result" && (
@@ -131,6 +131,7 @@ export function App() {
               today={today}
               progress={progress}
               onProgress={(id, v) => setProgress((prev) => ({ ...prev, [id]: v }))}
+              onAnswer={(field, value) => setProfile((prev) => ({ ...prev, [field]: value }))}
             />
           </div>
         )}

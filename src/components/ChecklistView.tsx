@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { GROUPS, groupEvaluated, type EvaluatedItem, type Group } from "../domain/checklist";
 import { daysBetween, formatJapaneseDate, type ISODate } from "../domain/dates";
-import type { Profile } from "../domain/profile";
+import type { Profile, Tri, TriField } from "../domain/profile";
 import type { Progress } from "../storage";
 
 interface Props {
@@ -10,6 +10,8 @@ interface Props {
   today: ISODate;
   progress: Record<string, Progress>;
   onProgress: (id: string, value: Progress) => void;
+  /** リスト上の質問に答えたとき */
+  onAnswer: (field: TriField, value: Tri) => void;
 }
 
 const PROGRESS_OPTIONS: { value: Progress; label: string }[] = [
@@ -39,19 +41,59 @@ function StatusBadge({ status }: { status: EvaluatedItem["evaluation"]["status"]
   return <span className="badge bg-subtle text-muted">対象外</span>;
 }
 
+const ANSWERS: { value: Tri; label: string }[] = [
+  { value: "yes", label: "はい" },
+  { value: "no", label: "いいえ" },
+];
+
+function FollowUps({
+  e,
+  profile,
+  onAnswer,
+}: {
+  e: EvaluatedItem;
+  profile: Profile;
+  onAnswer: (field: TriField, value: Tri) => void;
+}) {
+  const pending = (e.item.followUps ?? []).filter((f) => profile[f.field] === "unknown");
+  if (e.evaluation.status !== "check" || pending.length === 0) return null;
+  return (
+    <div className="mt-3 space-y-2 rounded-lg bg-warn-soft/60 p-3">
+      {pending.map((f) => (
+        <div key={f.field} className="flex flex-wrap items-center gap-2">
+          <span className="flex-1 min-w-[12rem] text-sm text-ink">{f.question}</span>
+          {ANSWERS.map((a) => (
+            <button
+              key={a.value}
+              type="button"
+              onClick={() => onAnswer(f.field, a.value)}
+              className="rounded-md border border-line bg-surface px-3 py-1 text-sm font-semibold text-ink hover:border-accent"
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ItemCard({
   e,
   today,
-  nextVisit,
+  profile,
   progress,
   onProgress,
+  onAnswer,
 }: {
   e: EvaluatedItem;
   today: ISODate;
-  nextVisit: ISODate | null;
+  profile: Profile;
   progress: Progress;
   onProgress: (value: Progress) => void;
+  onAnswer: (field: TriField, value: Tri) => void;
 }) {
+  const nextVisit = profile.nextVisit;
   const [open, setOpen] = useState(false);
   const { item, evaluation, deadline } = e;
   const done = progress === "done";
@@ -89,6 +131,8 @@ function ItemCard({
           ))}
         </select>
       </div>
+
+      <FollowUps e={e} profile={profile} onAnswer={onAnswer} />
 
       <button
         type="button"
@@ -164,9 +208,10 @@ function GroupSection({
             key={e.item.id}
             e={e}
             today={props.today}
-            nextVisit={props.profile.nextVisit}
+            profile={props.profile}
             progress={props.progress[e.item.id] ?? "todo"}
             onProgress={(v) => props.onProgress(e.item.id, v)}
+            onAnswer={props.onAnswer}
           />
         ))}
       </ul>
@@ -244,7 +289,7 @@ export function ChecklistView(props: Props) {
         <div className="card">
           <p className="text-xs font-semibold tracking-wider text-muted">確認が必要な項目</p>
           <p className="mt-1 text-2xl font-bold text-warn">{checkCount}件</p>
-          <p className="text-xs text-muted">分からないことが分かると、対象かどうかが決まります</p>
+          <p className="text-xs text-muted">各項目の下の質問に答えると、対象かどうかが決まります</p>
         </div>
       </div>
 
