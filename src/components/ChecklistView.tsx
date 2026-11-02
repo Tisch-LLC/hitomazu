@@ -14,11 +14,6 @@ interface Props {
   onAnswer: (field: TriField, value: Tri) => void;
 }
 
-const PROGRESS_OPTIONS: { value: Progress; label: string }[] = [
-  { value: "todo", label: "未着手" },
-  { value: "doing", label: "対応中" },
-  { value: "done", label: "完了" },
-];
 
 function remainingLabel(today: ISODate, deadline: ISODate): { text: string; tone: "danger" | "warn" | "normal" } {
   const days = daysBetween(today, deadline);
@@ -36,8 +31,8 @@ const TONE_CLASS = {
 } as const;
 
 function StatusBadge({ status }: { status: EvaluatedItem["evaluation"]["status"] }) {
-  if (status === "applies") return <span className="badge bg-accent-soft text-accent">要対応</span>;
-  if (status === "check") return <span className="badge bg-warn-soft text-warn">要確認</span>;
+  if (status === "applies") return <span className="badge bg-accent-soft text-accent">やること</span>;
+  if (status === "check") return <span className="badge bg-warn-soft text-warn">確認が必要</span>;
   return <span className="badge bg-subtle text-muted">対象外</span>;
 }
 
@@ -118,18 +113,16 @@ function ItemCard({
           )}
           <p className="mt-1 text-sm text-muted">{evaluation.reason}</p>
         </div>
-        <select
-          aria-label={`${item.title}の進み具合`}
-          value={progress}
-          onChange={(ev) => onProgress(ev.target.value as Progress)}
-          className="rounded-lg border border-line bg-surface px-2 py-1 text-sm text-ink"
+        <button
+          type="button"
+          aria-pressed={done}
+          onClick={() => onProgress(done ? "todo" : "done")}
+          className={`min-h-12 shrink-0 rounded-xl border-2 px-4 font-bold transition-colors ${
+            done ? "border-accent bg-accent text-white" : "border-line bg-surface text-ink hover:border-accent"
+          }`}
         >
-          {PROGRESS_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+          {done ? "✓ 済んだ" : "済んだら押す"}
+        </button>
       </div>
 
       <FollowUps e={e} profile={profile} onAnswer={onAnswer} />
@@ -138,9 +131,9 @@ function ItemCard({
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="mt-3 text-sm font-medium text-accent hover:underline"
+        className="mt-3 min-h-10 font-semibold text-accent underline-offset-4 hover:underline"
       >
-        {open ? "詳しい説明を閉じる" : "何をするか・どこで・根拠"}
+        {open ? "▲ 説明を閉じる" : "▼ くわしい説明（何をする・どこで・根拠）"}
       </button>
 
       {open && (
@@ -287,7 +280,7 @@ export function ChecklistView(props: Props) {
           )}
         </div>
         <div className="card">
-          <p className="text-xs font-semibold tracking-wider text-muted">確認が必要な項目</p>
+          <p className="text-sm font-semibold text-muted">確認が必要な項目</p>
           <p className="mt-1 text-2xl font-bold text-warn">{checkCount}件</p>
           <p className="text-xs text-muted">各項目の下の質問に答えると、対象かどうかが決まります</p>
         </div>

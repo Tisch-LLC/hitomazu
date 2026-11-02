@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChecklistView } from "./components/ChecklistView";
 import { Interview } from "./components/Interview";
+import { SheetPreview } from "./components/SheetPreview";
+import { SheetWizard } from "./components/SheetWizard";
 import { evaluateChecklist } from "./domain/checklist";
 import { formatJapaneseDate, todayISO } from "./domain/dates";
 import { EMPTY_PROFILE, SITUATION_LABELS, type Profile } from "./domain/profile";
-import { SAMPLE_PROFILE } from "./domain/sample";
+import { SAMPLE_PROFILE, SAMPLE_SHEET } from "./domain/sample";
+import { buildSheet, EMPTY_SHEET, type SheetAnswers } from "./domain/sheet";
 import { clearState, loadState, saveState, type Progress, type Stage } from "./storage";
 import "./index.css";
 
@@ -41,7 +44,15 @@ function Intro({ onStart, onSample }: { onStart: () => void; onSample: () => voi
   );
 }
 
-function SituationSummary({ profile, onEdit }: { profile: Profile; onEdit: () => void }) {
+function SituationSummary({
+  profile,
+  onEdit,
+  onSheet,
+}: {
+  profile: Profile;
+  onEdit: () => void;
+  onSheet: () => void;
+}) {
   const facts: string[] = [];
   if (profile.situation) facts.push(SITUATION_LABELS[profile.situation]);
   if (profile.situation === "inherited" && profile.deathDate) {
@@ -51,14 +62,33 @@ function SituationSummary({ profile, onEdit }: { profile: Profile; onEdit: () =>
   if (profile.nextVisit) facts.push(`次の帰省：${formatJapaneseDate(profile.nextVisit)}`);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-5">
-      <div>
-        <h1 className="text-2xl font-bold text-ink">あなたのやることリスト</h1>
-        <p className="mt-1 text-sm text-muted">{facts.join("　／　")}</p>
+    <div className="space-y-4 border-b border-line pb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-ink">あなたのやることリスト</h1>
+          <p className="mt-1 text-muted">{facts.join("　／　")}</p>
+        </div>
+        <button type="button" onClick={onEdit} className="btn-secondary">
+          質問に答え直す
+        </button>
       </div>
-      <button type="button" onClick={onEdit} className="btn-secondary text-sm">
-        回答を見直す
-      </button>
+      <div className="card space-y-2 bg-accent-soft/40">
+        <p className="font-bold text-ink">使い方</p>
+        <ol className="list-decimal space-y-1 pl-6 text-ink">
+          <li>上から順に見ていきます。期限が近いものほど上にあります。</li>
+          <li>終わったら、右の「済んだら押す」を押します。</li>
+          <li>「確認が必要」の項目は、下の質問に「はい・いいえ」で答えると、やるかどうかが決まります。</li>
+        </ol>
+      </div>
+      <div className="card flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="font-bold text-ink">不動産会社に相談するときは</p>
+          <p className="text-muted">家の状態や手元の書類をまとめた「ご相談シート」を作って、印刷・PDFで渡せます。</p>
+        </div>
+        <button type="button" onClick={onSheet} className="btn-primary">
+          ご相談シートを作る
+        </button>
+      </div>
     </div>
   );
 }
@@ -68,11 +98,12 @@ export function App() {
   const [stage, setStage] = useState<Stage>(initial?.stage ?? "intro");
   const [profile, setProfile] = useState<Profile>(initial?.profile ?? EMPTY_PROFILE);
   const [progress, setProgress] = useState<Record<string, Progress>>(initial?.progress ?? {});
+  const [sheet, setSheet] = useState<SheetAnswers>(initial?.sheet ?? EMPTY_SHEET);
   const today = todayISO();
 
   useEffect(() => {
-    if (stage !== "intro") saveState({ stage, profile, progress });
-  }, [stage, profile, progress]);
+    if (stage !== "intro") saveState({ stage, profile, progress, sheet });
+  }, [stage, profile, progress, sheet]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -85,12 +116,13 @@ export function App() {
     clearState();
     setProfile(EMPTY_PROFILE);
     setProgress({});
+    setSheet(EMPTY_SHEET);
     setStage("intro");
   };
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-10 border-b border-line bg-page/90 backdrop-blur">
+      <header className="app-header sticky top-0 z-10 border-b border-line bg-page/90 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3">
           <span className="font-bold text-ink">{APP_NAME}</span>
           {stage !== "intro" && (
@@ -106,10 +138,12 @@ export function App() {
           <Intro
             onStart={() => {
               setProfile(EMPTY_PROFILE);
+              setSheet(EMPTY_SHEET);
               setStage("interview");
             }}
             onSample={() => {
               setProfile(SAMPLE_PROFILE);
+              setSheet(SAMPLE_SHEET);
               setStage("result");
             }}
           />
@@ -124,7 +158,7 @@ export function App() {
         )}
         {stage === "result" && (
           <div className="space-y-8 pt-6">
-            <SituationSummary profile={profile} onEdit={() => setStage("interview")} />
+            <SituationSummary profile={profile} onEdit={() => setStage("interview")} onSheet={() => setStage("sheet")} />
             <ChecklistView
               items={items}
               profile={profile}
@@ -134,6 +168,23 @@ export function App() {
               onAnswer={(field, value) => setProfile((prev) => ({ ...prev, [field]: value }))}
             />
           </div>
+        )}
+        {stage === "sheet" && (
+          <SheetWizard
+            profile={profile}
+            answers={sheet}
+            onChange={setSheet}
+            onFinish={() => setStage("sheetPreview")}
+            onCancel={() => setStage("result")}
+          />
+        )}
+        {stage === "sheetPreview" && (
+          <SheetPreview
+            sheet={buildSheet(profile, sheet, today)}
+            appName={APP_NAME}
+            onEdit={() => setStage("sheet")}
+            onBack={() => setStage("result")}
+          />
         )}
       </main>
     </div>

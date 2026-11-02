@@ -19,6 +19,8 @@
 @layer base {
   :root {
     color-scheme: light;
+    /* 文字を大きめに（標準の 16px → 18px）。rem で指定した大きさがすべて比例して大きくなる */
+    font-size: 112.5%;
   }
 
   body {
@@ -36,10 +38,45 @@
   }
 
   .btn-primary {
-    @apply rounded-lg bg-accent px-5 py-2.5 font-semibold text-white hover:opacity-90;
+    @apply min-h-12 rounded-xl bg-accent px-6 py-3 font-bold text-white hover:opacity-90;
   }
 
   .btn-secondary {
-    @apply rounded-lg border border-line bg-surface px-5 py-2.5 font-semibold text-ink hover:bg-subtle;
+    @apply min-h-12 rounded-xl border-2 border-line bg-surface px-5 py-3 font-semibold text-ink hover:border-accent;
+  }
+}
+
+/* 印刷・PDF保存のとき：シートだけを A4 に収める */
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+@media print {
+  :root {
+    font-size: 100%;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  header.app-header,
+  .no-print {
+    display: none !important;
+  }
+
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .sheet-block {
+    break-inside: avoid;
+  }
+
+  .sheet {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }

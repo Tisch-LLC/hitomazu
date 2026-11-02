@@ -1,4 +1,5 @@
 import { EMPTY_PROFILE, type Profile } from "./domain/profile";
+import { EMPTY_SHEET, type SheetAnswers } from "./domain/sheet";
 
 /**
  * 利用者のデータはこのブラウザの中（localStorage）だけに保存する。
@@ -7,16 +8,17 @@ import { EMPTY_PROFILE, type Profile } from "./domain/profile";
 
 export type Progress = "todo" | "doing" | "done";
 
-export type Stage = "intro" | "interview" | "result";
+export type Stage = "intro" | "interview" | "result" | "sheet" | "sheetPreview";
 
 export interface SavedState {
   stage: Stage;
   profile: Profile;
   progress: Record<string, Progress>;
+  sheet: SheetAnswers;
 }
 
 const KEY = "jikka-checklist:v2";
-const STAGES: Stage[] = ["intro", "interview", "result"];
+const STAGES: Stage[] = ["intro", "interview", "result", "sheet", "sheetPreview"];
 
 export function loadState(): SavedState | null {
   try {
@@ -27,6 +29,7 @@ export function loadState(): SavedState | null {
       stage: parsed.stage && STAGES.includes(parsed.stage) ? parsed.stage : "intro",
       profile: { ...EMPTY_PROFILE, ...(parsed.profile ?? {}) },
       progress: parsed.progress ?? {},
+      sheet: { ...EMPTY_SHEET, ...(parsed.sheet ?? {}) },
     };
   } catch {
     return null;
