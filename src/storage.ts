@@ -7,12 +7,16 @@ import { EMPTY_PROFILE, type Profile } from "./domain/profile";
 
 export type Progress = "todo" | "doing" | "done";
 
+export type Stage = "intro" | "interview" | "result";
+
 export interface SavedState {
+  stage: Stage;
   profile: Profile;
   progress: Record<string, Progress>;
 }
 
-const KEY = "jikka-checklist:v1";
+const KEY = "jikka-checklist:v2";
+const STAGES: Stage[] = ["intro", "interview", "result"];
 
 export function loadState(): SavedState | null {
   try {
@@ -20,6 +24,7 @@ export function loadState(): SavedState | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<SavedState>;
     return {
+      stage: parsed.stage && STAGES.includes(parsed.stage) ? parsed.stage : "intro",
       profile: { ...EMPTY_PROFILE, ...(parsed.profile ?? {}) },
       progress: parsed.progress ?? {},
     };

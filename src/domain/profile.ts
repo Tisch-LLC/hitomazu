@@ -7,6 +7,10 @@ export type Tri = "yes" | "no" | "unknown";
  * 利用者の状況。分からない項目は null か "unknown" のままにし、チェックリスト側で「要確認」として扱う。
  */
 export interface Profile {
+  /** 親などが亡くなり、実家を相続した（する予定）か。"no" は持ち主が存命の場合 */
+  isInheritance: Tri;
+  /** 相続でない場合：持ち主が自分で契約などを判断できる状態か */
+  ownerCanDecide: Tri;
   /** 亡くなった日（相続開始日） */
   deathDate: ISODate | null;
   /** 相続の開始を知った日。空なら亡くなった日と同じとみなす */
@@ -23,8 +27,8 @@ export interface Profile {
   estateMayExceedBasic: Tri;
   /** 実家の所在地 */
   propertyAddress: string;
-  /** 実家を建てた年（西暦）。分からなければ null */
-  builtYear: number | null;
+  /** 実家が昭和56年（1981年）5月31日以前に建てられたか（空き家特例・耐震の目安） */
+  builtOld: Tri;
   /** 亡くなる直前、実家で一人暮らしだったか（空き家特例の要件の一つ） */
   deceasedLivedAlone: Tri;
   /** 相続した土地に田・畑が含まれるか */
@@ -38,6 +42,8 @@ export interface Profile {
 }
 
 export const EMPTY_PROFILE: Profile = {
+  isInheritance: "unknown",
+  ownerCanDecide: "unknown",
   deathDate: null,
   knownDate: null,
   heirsCount: null,
@@ -46,7 +52,7 @@ export const EMPTY_PROFILE: Profile = {
   deceasedHadIncome: "unknown",
   estateMayExceedBasic: "unknown",
   propertyAddress: "",
-  builtYear: null,
+  builtOld: "unknown",
   deceasedLivedAlone: "unknown",
   hasFarmland: "unknown",
   hasForest: "unknown",

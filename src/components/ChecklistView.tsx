@@ -207,15 +207,19 @@ export function ChecklistView(props: Props) {
     )
     .sort((a, b) => a.deadline!.date.localeCompare(b.deadline!.date));
   const next = upcoming[0];
+  const firstAction = props.items.find(
+    (e) => e.evaluation.status !== "not_applicable" && props.progress[e.item.id] !== "done" && !e.deadline,
+  );
   const checkCount = props.items.filter((e) => e.evaluation.status === "check").length;
+  const visibleGroups = GROUPS.filter((g) => grouped[g.id].length > 0);
 
   return (
     <div className="space-y-10">
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="card sm:col-span-2">
-          <p className="text-xs font-semibold tracking-wider text-muted">いちばん近い期限</p>
           {next?.deadline ? (
             <>
+              <p className="text-xs font-semibold tracking-wider text-muted">いちばん近い期限</p>
               <p className="mt-1 text-lg font-bold text-ink">{next.item.title}</p>
               <p className="mt-1 text-sm text-ink">
                 {formatJapaneseDate(next.deadline.date)}
@@ -224,26 +228,35 @@ export function ChecklistView(props: Props) {
                 </span>
               </p>
             </>
+          ) : firstAction ? (
+            <>
+              <p className="text-xs font-semibold tracking-wider text-muted">まず最初にやること</p>
+              <p className="mt-1 text-lg font-bold text-ink">{firstAction.item.title}</p>
+              <p className="mt-1 text-sm text-muted">{firstAction.evaluation.reason}</p>
+            </>
           ) : (
-            <p className="mt-1 text-sm text-muted">亡くなった日を入力すると、期限を計算します。</p>
+            <>
+              <p className="text-xs font-semibold tracking-wider text-muted">進み具合</p>
+              <p className="mt-1 text-lg font-bold text-ink">表示している項目はすべて完了しています</p>
+            </>
           )}
         </div>
         <div className="card">
           <p className="text-xs font-semibold tracking-wider text-muted">確認が必要な項目</p>
           <p className="mt-1 text-2xl font-bold text-warn">{checkCount}件</p>
-          <p className="text-xs text-muted">分からない項目が分かると、対象かどうかが決まります</p>
+          <p className="text-xs text-muted">分からないことが分かると、対象かどうかが決まります</p>
         </div>
       </div>
 
       <nav aria-label="グループ" className="flex flex-wrap gap-2">
-        {GROUPS.map((g) => (
+        {visibleGroups.map((g) => (
           <a key={g.id} href={`#group-${g.id}`} className="rounded-full border border-line bg-surface px-3 py-1 text-sm text-ink hover:bg-subtle">
             {g.title}
           </a>
         ))}
       </nav>
 
-      {GROUPS.map((g) => (
+      {visibleGroups.map((g) => (
         <GroupSection key={g.id} group={g} items={grouped[g.id as Group]} props={props} />
       ))}
 

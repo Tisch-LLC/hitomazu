@@ -20,9 +20,41 @@ test("出典のURLはすべて https", () => {
   }
 });
 
-describe("何も入力していないとき", () => {
+const INHERITED: Profile = { ...EMPTY_PROFILE, isInheritance: "yes" };
+
+describe("相続かどうかで表示する項目が変わる", () => {
+  const ids = (p: Profile) => evaluateChecklist(p).map((e) => e.item.id);
+
+  test("相続のときだけ、相続の項目が出る", () => {
+    expect(ids(INHERITED)).toContain("inheritance-decision");
+    expect(ids(INHERITED)).toContain("koseki");
+    expect(ids(INHERITED)).not.toContain("owner-decision");
+  });
+
+  test("相続でないときは、相続の項目が出ず、持ち主の意向の項目が出る", () => {
+    const p: Profile = { ...EMPTY_PROFILE, isInheritance: "no" };
+    expect(ids(p)).not.toContain("inheritance-decision");
+    expect(ids(p)).not.toContain("souzoku-touki");
+    expect(ids(p)).not.toContain("akiya-special");
+    expect(ids(p)).toContain("owner-decision");
+    expect(ids(p)).toContain("onsite-photos");
+  });
+
+  test("まだ答えていないときは、共通の項目だけ", () => {
+    expect(ids(EMPTY_PROFILE)).not.toContain("inheritance-decision");
+    expect(ids(EMPTY_PROFILE)).not.toContain("owner-decision");
+    expect(ids(EMPTY_PROFILE)).toContain("touki-shoumei");
+  });
+
+  test("持ち主が判断できない状態なら、成年後見に触れる", () => {
+    const p: Profile = { ...EMPTY_PROFILE, isInheritance: "no", ownerCanDecide: "no" };
+    expect(find(p, "owner-decision").evaluation.reason).toContain("成年後見");
+  });
+});
+
+describe("相続で、日付をまだ入力していないとき", () => {
   test("期限のある手続きは「要確認」になり、期限は出ない", () => {
-    const e = find(EMPTY_PROFILE, "inheritance-decision");
+    const e = find(INHERITED, "inheritance-decision");
     expect(e.evaluation.status).toBe("check");
     expect(e.deadline).toBeNull();
   });
@@ -71,24 +103,24 @@ describe("サンプル（2026-09-20 に亡くなった、相続人2人）", () =
 
 describe("相続登記の経過措置", () => {
   test("2024年4月1日より前の相続は、2027年3月31日まで", () => {
-    const p: Profile = { ...EMPTY_PROFILE, deathDate: "2020-05-10" };
+    const p: Profile = { ...INHERITED, deathDate: "2020-05-10" };
     expect(find(p, "souzoku-touki").deadline?.date).toBe("2027-03-31");
   });
 
   test("施行前の相続でも、知った日が遅ければ3年後", () => {
-    const p: Profile = { ...EMPTY_PROFILE, deathDate: "2023-06-01", knownDate: "2024-10-01" };
+    const p: Profile = { ...INHERITED, deathDate: "2023-06-01", knownDate: "2024-10-01" };
     expect(find(p, "souzoku-touki").deadline?.date).toBe("2027-10-01");
   });
 });
 
 describe("空き家特例の判定", () => {
-  test("1982年以降の建物は対象外", () => {
-    const p: Profile = { ...SAMPLE_PROFILE, builtYear: 1990 };
+  test("昭和56年5月31日より後の建物は対象外", () => {
+    const p: Profile = { ...SAMPLE_PROFILE, builtOld: "no" };
     expect(find(p, "akiya-special").evaluation.status).toBe("not_applicable");
   });
 
-  test("1981年築は5月31日以前か分からないので要確認", () => {
-    const p: Profile = { ...SAMPLE_PROFILE, builtYear: 1981 };
+  test("建てた時期が分からなければ要確認", () => {
+    const p: Profile = { ...SAMPLE_PROFILE, builtOld: "unknown" };
     expect(find(p, "akiya-special").evaluation.status).toBe("check");
   });
 

@@ -46,9 +46,13 @@ export interface Deadline {
   note: string;
 }
 
+/** inheritance：相続のときだけ表示／owner_alive：持ち主が存命（相続でない）ときだけ表示／省略：常に表示 */
+export type Scope = "inheritance" | "owner_alive";
+
 export interface ChecklistItem {
   id: string;
   group: Group;
+  scope?: Scope;
   title: string;
   /** 何をするか、なぜ必要か */
   summary: string;
@@ -107,6 +111,15 @@ const SRC = {
     url: "https://www.kkr.mlit.go.jp/kensei/jutaku/ol9a8v0000035gqj-att/ol9a8v000004n1co.pdf",
   },
   matsue: { label: "松江市 公式サイト", url: "https://www.city.matsue.lg.jp/" },
+  mhlwKouken: { label: "成年後見はやわかり（厚生労働省）", url: "https://guardianship.mhlw.go.jp/" },
+  mhlwHouteiKouken: {
+    label: "法定後見制度とは（厚生労働省）",
+    url: "https://guardianship.mhlw.go.jp/personal/type/legal_guardianship/",
+  },
+  mhlwNiniKouken: {
+    label: "任意後見制度とは（厚生労働省）",
+    url: "https://guardianship.mhlw.go.jp/personal/type/optional_guardianship/",
+  },
 } satisfies Record<string, Source>;
 
 /** 期限の計算に必要な日付が入っていないときの共通の扱い */
@@ -136,6 +149,7 @@ export const CHECKLIST: ChecklistItem[] = [
   // ───────────── 期限があるもの ─────────────
   {
     id: "inheritance-decision",
+    scope: "inheritance",
     group: "deadline",
     title: "相続するか、放棄するかを決める",
     summary:
@@ -171,6 +185,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "jun-kakutei",
+    scope: "inheritance",
     group: "deadline",
     title: "亡くなった人の所得税の申告（準確定申告）",
     summary:
@@ -195,6 +210,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "souzokuzei",
+    scope: "inheritance",
     group: "deadline",
     title: "相続税の申告",
     summary:
@@ -222,6 +238,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "souzoku-touki",
+    scope: "inheritance",
     group: "deadline",
     title: "相続登記（実家の名義を変える）",
     summary:
@@ -251,6 +268,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "nouchi-todoke",
+    scope: "inheritance",
     group: "deadline",
     title: "農地を相続したときの届出",
     summary:
@@ -273,6 +291,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "shinrin-todoke",
+    scope: "inheritance",
     group: "deadline",
     title: "森林の土地の所有者届出",
     summary:
@@ -294,6 +313,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "akiya-special",
+    scope: "inheritance",
     group: "deadline",
     title: "実家を売るなら：空き家の3,000万円特別控除の期限",
     summary:
@@ -305,19 +325,19 @@ export const CHECKLIST: ChecklistItem[] = [
       if (!p.deathDate) {
         return { status: "check", reason: "亡くなった日を入力すると、売却の期限を計算できます。" };
       }
-      if (p.builtYear !== null && p.builtYear >= 1982) {
-        return { status: "not_applicable", reason: `建築年（${p.builtYear}年）が昭和56年5月31日より後のため、対象外です。` };
+      if (p.builtOld === "no") {
+        return { status: "not_applicable", reason: "昭和56年5月31日より後に建てられた家のため、対象外です。" };
       }
       if (p.deceasedLivedAlone === "no") {
         return { status: "not_applicable", reason: "亡くなる直前に一人暮らしではなかったため、原則として対象外です（老人ホーム入所などの例外あり）。" };
       }
-      if (p.builtYear === null || p.builtYear === 1981 || p.deceasedLivedAlone === "unknown") {
+      if (p.builtOld === "unknown" || p.deceasedLivedAlone === "unknown") {
         return {
           status: "check",
-          reason: "建てた年（昭和56年5月31日以前か）と、一人暮らしだったかを確認すると、対象かどうか分かります。",
+          reason: "建てた時期（昭和56年5月31日以前か）と、一人暮らしだったかが分かると、対象かどうか判断できます。",
         };
       }
-      return { status: "applies", reason: `昭和56年以前（${p.builtYear}年）の建物で、一人暮らしだったため、対象になる可能性があります。` };
+      return { status: "applies", reason: "昭和56年5月31日以前の建物で、一人暮らしだったため、対象になる可能性があります。" };
     },
     deadline(p) {
       if (!p.deathDate) return null;
@@ -331,7 +351,34 @@ export const CHECKLIST: ChecklistItem[] = [
 
   // ───────────── 遠隔でできるもの ─────────────
   {
+    id: "owner-decision",
+    scope: "owner_alive",
+    group: "remote",
+    title: "持ち主の意向を確かめ、判断できるうちに方針を話し合う",
+    summary:
+      "実家を売る・貸す・解体するには、原則として名義人（持ち主）本人の意思で契約します。認知症などで判断能力が低下すると、本人に代わって契約するには成年後見制度を使う必要があり、時間と手間がかかります。持ち主が元気なうちに、実家をどうしたいかを聞いておくことが大切です。",
+    where: "家族での話し合い。制度の相談は、市町村の地域包括支援センターや成年後見の相談窓口",
+    tips: [
+      "判断能力があるうちなら、将来に備えて代理人を決めておく「任意後見」という方法もあります。",
+      "成年後見人が本人の住まいだった家を売るには、家庭裁判所の許可が必要です。",
+    ],
+    sources: [SRC.mhlwKouken, SRC.mhlwHouteiKouken, SRC.mhlwNiniKouken],
+    evaluate(p) {
+      if (p.ownerCanDecide === "yes") {
+        return { status: "applies", reason: "持ち主が自分で判断できるうちに、売る・貸す・残すの意向を聞いておきましょう。" };
+      }
+      if (p.ownerCanDecide === "no") {
+        return {
+          status: "applies",
+          reason: "持ち主が自分で判断することが難しいため、実家の契約には成年後見制度の利用が必要になる可能性があります。",
+        };
+      }
+      return { status: "check", reason: "持ち主が自分で契約などを判断できる状態か、確認してください。" };
+    },
+  },
+  {
     id: "will",
+    scope: "inheritance",
     group: "remote",
     title: "遺言書があるか確認する",
     summary: "遺言書があるかどうかで、誰が実家を相続するかの決め方が変わります。自宅での保管のほか、公証役場や法務局に保管されている場合があります。",
@@ -345,6 +392,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "koseki",
+    scope: "inheritance",
     group: "remote",
     title: "戸籍を集めて、相続人を確定する",
     summary:
@@ -370,6 +418,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "assets-debts",
+    scope: "inheritance",
     group: "remote",
     title: "財産と借金の全体をつかむ",
     summary: "預金・不動産・有価証券と、ローン・借金・保証人になっていないかを調べます。相続放棄や相続税の判断材料になります。",
@@ -385,13 +434,16 @@ export const CHECKLIST: ChecklistItem[] = [
   {
     id: "tax-notice",
     group: "remote",
-    title: "固定資産税の納税通知書の送り先を自分に変える",
+    title: "固定資産税の納税通知書が、確実に届くようにする",
     summary:
-      "実家の固定資産税の通知が届かないと、納め忘れや、市町村からの連絡（空き家の管理に関する通知など）を見落とす原因になります。相続登記が済むまでの間は、相続人の代表者を届け出ることが多いです。",
+      "実家の固定資産税の通知が届かないと、納め忘れや、市町村からの連絡（空き家の管理に関する通知など）を見落とす原因になります。相続の場合、相続登記が済むまでの間は相続人の代表者を届け出ることが多いです。持ち主が施設に入った場合は、送り先の変更を届け出ます。",
     where: "実家のある市町村の資産税担当窓口（郵送で届け出られることが多い）",
     sources: [SRC.matsue],
-    evaluate() {
-      return { status: "applies", reason: "遠方に住んでいると、市町村からの通知を受け取れる状態にしておくことが重要です。" };
+    evaluate(p) {
+      if (p.isInheritance === "yes") {
+        return { status: "applies", reason: "亡くなった人宛ての通知は、相続人が受け取れるように届け出る必要があります。" };
+      }
+      return { status: "applies", reason: "持ち主が実家に住んでいないと、通知が誰にも読まれないまま届き続けます。" };
     },
   },
   {
@@ -431,12 +483,15 @@ export const CHECKLIST: ChecklistItem[] = [
   {
     id: "family",
     group: "remote",
-    title: "親族の間で、実家の窓口になる人を決める",
-    summary: "市町村・業者・近所からの連絡を誰が受けるか、費用を誰がどう負担するかを決めます。遺産分割の話し合いの前でも、窓口だけは決めておくと手続きが止まりません。",
+    title: "家族の間で、実家の窓口になる人を決める",
+    summary: "市町村・業者・近所からの連絡を誰が受けるか、費用を誰がどう負担するかを決めます。相続の場合は、遺産分割の話し合いの前でも窓口だけは決めておくと手続きが止まりません。",
     sources: [],
     evaluate(p) {
+      if (p.isInheritance !== "yes") {
+        return { status: "applies", reason: "持ち主に代わって連絡を受ける人を決めておくと、何かあったときにすぐ動けます。" };
+      }
       if (p.heirsCount === 1) return { status: "not_applicable", reason: "相続人が1人のため、窓口はご自身です。" };
-      if (p.heirsCount === null) return { status: "check", reason: "相続人の人数を入力してください。" };
+      if (p.heirsCount === null) return { status: "check", reason: "相続人の人数が分かると、話し合いが必要か判断できます。" };
       return { status: "applies", reason: `相続人が${p.heirsCount}人いるため、連絡の窓口と費用の分担を決めておく必要があります。` };
     },
   },
@@ -549,8 +604,15 @@ export interface EvaluatedItem {
   deadline: Deadline | null;
 }
 
+/** 相続かどうかの回答に合わせて、表示する項目を選ぶ。 */
+export function isInScope(item: ChecklistItem, p: Profile): boolean {
+  if (item.scope === "inheritance") return p.isInheritance === "yes";
+  if (item.scope === "owner_alive") return p.isInheritance === "no";
+  return true;
+}
+
 export function evaluateChecklist(profile: Profile): EvaluatedItem[] {
-  return CHECKLIST.map((item) => ({
+  return CHECKLIST.filter((item) => isInScope(item, profile)).map((item) => ({
     item,
     evaluation: item.evaluate(profile),
     deadline: item.deadline?.(profile) ?? null,
