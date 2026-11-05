@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatJapaneseDate, isISODate } from "../domain/dates";
-import { visibleQuestions, type Question } from "../domain/interview";
+import { isUnanswered, visibleQuestions, type Question } from "../domain/interview";
 import type { Profile } from "../domain/profile";
 
 interface Props {
@@ -8,6 +8,8 @@ interface Props {
   onChange: (profile: Profile) => void;
   onFinish: () => void;
   onCancel: () => void;
+  /** true なら、まだ答えていない最初の質問から始める（文章から読み取ったあと） */
+  resume?: boolean;
 }
 
 const COUNT_CHOICES = [1, 2, 3, 4, 5];
@@ -51,8 +53,13 @@ function TextOrDateInput({
   );
 }
 
-export function Interview({ profile, onChange, onFinish, onCancel }: Props) {
-  const [index, setIndex] = useState(0);
+export function Interview({ profile, onChange, onFinish, onCancel, resume = false }: Props) {
+  const [index, setIndex] = useState(() => {
+    if (!resume) return 0;
+    const list = visibleQuestions(profile);
+    const first = list.findIndex((q) => isUnanswered(q, profile));
+    return first < 0 ? 0 : first;
+  });
   const questions = visibleQuestions(profile);
   const q = questions[Math.min(index, questions.length - 1)];
   if (!q) return null;

@@ -156,6 +156,14 @@ export const QUESTIONS: Question[] = [
   },
 ];
 
+/** その質問にまだ答えていないか（「分からない」と答えたものも、もう一度聞く対象にする） */
+export function isUnanswered(q: Question, p: Profile): boolean {
+  const v = p[q.field];
+  if (q.kind === "tri") return v === "unknown";
+  if (q.kind === "text") return typeof v !== "string" || v.trim() === "";
+  return v === null;
+}
+
 /** いまの回答で表示する質問 */
 export function visibleQuestions(p: Profile): Question[] {
   return QUESTIONS.filter((q) => !q.when || q.when(p));

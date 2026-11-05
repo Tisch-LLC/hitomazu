@@ -10,10 +10,12 @@
     "typecheck": "bun check"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.5.0",
     "bun-plugin-tailwind": "^0.1.2",
     "react": "^19",
     "react-dom": "^19",
-    "tailwindcss": "^4.1.11"
+    "tailwindcss": "^4.1.11",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/react": "^19",

@@ -8,7 +8,7 @@ import { EMPTY_SHEET, type SheetAnswers } from "./domain/sheet";
 
 export type Progress = "todo" | "doing" | "done";
 
-export type Stage = "intro" | "interview" | "result" | "sheet" | "sheetPreview";
+export type Stage = "intro" | "freeText" | "interview" | "result" | "sheet" | "sheetPreview";
 
 export interface SavedState {
   stage: Stage;
@@ -18,7 +18,7 @@ export interface SavedState {
 }
 
 const KEY = "jikka-checklist:v2";
-const STAGES: Stage[] = ["intro", "interview", "result", "sheet", "sheetPreview"];
+const STAGES: Stage[] = ["intro", "freeText", "interview", "result", "sheet", "sheetPreview"];
 
 export function loadState(): SavedState | null {
   try {

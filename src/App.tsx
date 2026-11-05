@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChecklistView } from "./components/ChecklistView";
+import { FreeText } from "./components/FreeText";
 import { Interview } from "./components/Interview";
 import { SheetPreview } from "./components/SheetPreview";
 import { SheetWizard } from "./components/SheetWizard";
@@ -13,33 +14,62 @@ import "./index.css";
 
 export const APP_NAME = "実家のこれから";
 
-function Intro({ onStart, onSample }: { onStart: () => void; onSample: () => void }) {
+function Intro({
+  claudeReady,
+  onStart,
+  onFreeText,
+  onSample,
+}: {
+  claudeReady: boolean;
+  onStart: () => void;
+  onFreeText: () => void;
+  onSample: () => void;
+}) {
   return (
-    <div className="mx-auto max-w-2xl py-10 sm:py-16">
-      <p className="text-sm font-semibold text-accent">離れて暮らす実家のための手続きナビ</p>
+    <div className="mx-auto max-w-2xl py-10 sm:py-14">
+      <p className="font-semibold text-accent">離れて暮らす実家のための手続きナビ</p>
       <h1 className="mt-3 text-3xl font-bold leading-tight text-ink sm:text-4xl">
         実家のこと、
         <br />
-        何から始めればいい？
+        何を、いつまでに？
       </h1>
-      <p className="mt-5 leading-relaxed text-ink">
-        親が施設に入って、実家が空いた。親が一人で暮らしていて、この先が気になる。親が亡くなり、実家を相続した。
-        でも自分は遠くに住んでいて、帰れるのは年に数回だけ。
+      <p className="mt-5 text-lg leading-relaxed text-ink">
+        親が施設に入った。親が亡くなった。親が一人で暮らしていて、この先が心配。
+        でも自分は遠くに住んでいて、帰れるのは年に数回だけ――。
       </p>
       <p className="mt-3 leading-relaxed text-ink">
-        いくつかの質問に答えると、あなたの状況で<strong>最低限やること</strong>を、
-        「遠くからできること」「次の帰省でやること」「これからの方針」に分けて示します。期限のある手続きがあれば、期限の近い順に並べます。
-        各項目には、国や自治体の案内を根拠として付けています。
+        質問に答えると、あなたの状況で<strong>最低限やること</strong>と<strong>期限</strong>が分かります。
+        不動産会社に渡す「ご相談シート」も作れます。
       </p>
-      <div className="mt-8 flex flex-wrap gap-3">
-        <button type="button" onClick={onStart} className="btn-primary">
-          質問に答えて始める（約2分）
+
+      <div className="mt-8 grid gap-3">
+        <button type="button" onClick={onStart} className="rounded-2xl border-2 border-accent bg-accent p-5 text-left text-white hover:opacity-90">
+          <span className="block text-xl font-bold">質問に答えて始める</span>
+          <span className="mt-1 block opacity-90">ボタンを押すだけ。2分ほどで終わります</span>
         </button>
-        <button type="button" onClick={onSample} className="btn-secondary">
-          サンプル（架空の松江の実家）を見る
-        </button>
+        {claudeReady && (
+          <button type="button" onClick={onFreeText} className="rounded-2xl border-2 border-line bg-surface p-5 text-left hover:border-accent">
+            <span className="block text-xl font-bold text-ink">自分の言葉で書いて始める</span>
+            <span className="mt-1 block text-muted">状況を文章で書くと、AIが読み取ります。スマホなら話して入力もできます</span>
+          </button>
+        )}
       </div>
-      <p className="mt-6 text-sm text-muted">回答は、このブラウザの中だけに保存されます。</p>
+      <button type="button" onClick={onSample} className="mt-5 font-semibold text-accent underline underline-offset-4">
+        まず見てみる（架空の「松江の実家」のサンプル）
+      </button>
+
+      <div className="mt-10 card">
+        <p className="font-semibold text-ink">島根県では、使われていない空き家の割合が全国の約2倍です</p>
+        <p className="mt-1 text-muted">
+          売りにも貸しにも出されていない空き家の割合は、全国 5.9％に対して島根県 11.3％（2023年）。
+          空き家が増える一番の理由は、親世代が亡くなることだとされています。
+        </p>
+        <p className="mt-2 text-xs text-muted">出典：日本総合研究所「2040年代の全国・都道府県別空き家数・空き家率の推計」（2025年3月）</p>
+      </div>
+
+      <p className="mt-6 text-sm text-muted">
+        回答は、このブラウザの中だけに保存されます。このアプリは手続きの漏れを防ぐためのもので、法律・税金・価格の判断は専門家に確認してください。
+      </p>
     </div>
   );
 }
@@ -99,6 +129,15 @@ export function App() {
   const [profile, setProfile] = useState<Profile>(initial?.profile ?? EMPTY_PROFILE);
   const [progress, setProgress] = useState<Record<string, Progress>>(initial?.progress ?? {});
   const [sheet, setSheet] = useState<SheetAnswers>(initial?.sheet ?? EMPTY_SHEET);
+  const [claudeReady, setClaudeReady] = useState(false);
+  const [resume, setResume] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/status")
+      .then((r) => r.json())
+      .then((d: { claude?: { configured?: boolean } }) => setClaudeReady(d.claude?.configured === true))
+      .catch(() => setClaudeReady(false));
+  }, []);
   const today = todayISO();
 
   useEffect(() => {
@@ -136,10 +175,17 @@ export function App() {
       <main className="mx-auto max-w-3xl px-4 pb-16">
         {stage === "intro" && (
           <Intro
+            claudeReady={claudeReady}
             onStart={() => {
               setProfile(EMPTY_PROFILE);
               setSheet(EMPTY_SHEET);
+              setResume(false);
               setStage("interview");
+            }}
+            onFreeText={() => {
+              setProfile(EMPTY_PROFILE);
+              setSheet(EMPTY_SHEET);
+              setStage("freeText");
             }}
             onSample={() => {
               setProfile(SAMPLE_PROFILE);
@@ -148,8 +194,25 @@ export function App() {
             }}
           />
         )}
+        {stage === "freeText" && (
+          <FreeText
+            onApply={(updates) => {
+              const next = { ...EMPTY_PROFILE };
+              for (const u of updates) Object.assign(next, { [u.field]: u.value });
+              setProfile(next);
+              setResume(true);
+              setStage("interview");
+            }}
+            onUseQuestions={() => {
+              setResume(false);
+              setStage("interview");
+            }}
+          />
+        )}
         {stage === "interview" && (
           <Interview
+            key={resume ? "resume" : "start"}
+            resume={resume}
             profile={profile}
             onChange={setProfile}
             onFinish={() => setStage("result")}
@@ -158,7 +221,12 @@ export function App() {
         )}
         {stage === "result" && (
           <div className="space-y-8 pt-6">
-            <SituationSummary profile={profile} onEdit={() => setStage("interview")} onSheet={() => setStage("sheet")} />
+            <SituationSummary
+              profile={profile}
+              onEdit={() => {
+                setResume(false);
+                setStage("interview");
+              }} onSheet={() => setStage("sheet")} />
             <ChecklistView
               items={items}
               profile={profile}
