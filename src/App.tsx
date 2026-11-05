@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { ChecklistView } from "./components/ChecklistView";
 import { FreeText } from "./components/FreeText";
 import { Interview } from "./components/Interview";
+import { RiskPanel } from "./components/RiskPanel";
 import { SheetPreview } from "./components/SheetPreview";
 import { SheetWizard } from "./components/SheetWizard";
 import { evaluateChecklist } from "./domain/checklist";
 import { formatJapaneseDate, todayISO } from "./domain/dates";
 import { EMPTY_PROFILE, SITUATION_LABELS, type Profile } from "./domain/profile";
 import { SAMPLE_PROFILE, SAMPLE_SHEET } from "./domain/sample";
+import { findRisks } from "./domain/risks";
 import { buildSheet, EMPTY_SHEET, type SheetAnswers } from "./domain/sheet";
 import { clearState, loadState, saveState, type Progress, type Stage } from "./storage";
 import "./index.css";
@@ -227,6 +229,11 @@ export function App() {
                 setResume(false);
                 setStage("interview");
               }} onSheet={() => setStage("sheet")} />
+            <RiskPanel
+              risks={findRisks(profile, sheet)}
+              sheetEmpty={JSON.stringify(sheet) === JSON.stringify(EMPTY_SHEET)}
+              onSheet={() => setStage("sheet")}
+            />
             <ChecklistView
               items={items}
               profile={profile}

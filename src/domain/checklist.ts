@@ -12,6 +12,7 @@ import {
   basicDeductionManYen,
   effectiveKnownDate,
   isInherited,
+  isOwnerAlive,
   type Profile,
   type Situation,
   type Tri,
@@ -126,6 +127,15 @@ const SRC = {
     url: "https://www.kkr.mlit.go.jp/kensei/jutaku/ol9a8v0000035gqj-att/ol9a8v000004n1co.pdf",
   },
   matsue: { label: "松江市 公式サイト", url: "https://www.city.matsue.lg.jp/" },
+  minpo251: { label: "民法 第251条（共有物の変更）（e-Gov法令検索）", url: "https://laws.e-gov.go.jp/law/129AC0000000089" },
+  nagoyaKyokai: {
+    label: "土地の境界についての資料（名古屋市）",
+    url: "https://www.city.nagoya.jp/sportsshimin/cmsfiles/contents/0000101/101666/tochikaokupdf.pdf",
+  },
+  kyotoGenya: {
+    label: "原野商法の二次被害（京都府消費生活安全センター）",
+    url: "https://www.pref.kyoto.jp/shohise/1220501470862.html",
+  },
   shizuokaNouchi: {
     label: "農地法（第3条、第4条、第5条）に関する手続きのご案内（静岡市・案内例）",
     url: "https://www.city.shizuoka.lg.jp/000_006310.html",
@@ -678,6 +688,37 @@ export const CHECKLIST: ChecklistItem[] = [
     },
   },
 
+  {
+    id: "plan-co-ownership",
+    situations: INHERITED,
+    group: "plan",
+    title: "実家を「共有名義」のままにしない方向で話し合う",
+    summary:
+      "相続人が複数いて、実家を全員の共有名義にすると、売る・解体するなど大きなことを決めるたびに全員の同意が必要になります。代替わりで共有者が増えると、話し合いはさらに難しくなります。誰が引き継ぐか、売って分けるかなど、共有にしない方法を早めに話し合っておくと、負担の大きい家（負動産）になるのを防げます。",
+    where: "家族での話し合い。登記の方法は司法書士、税金は税理士に相談",
+    sources: [SRC.minpo251],
+    evaluate(p) {
+      if (p.heirsCount === 1) return { status: "not_applicable", reason: "相続人が1人のため、共有にはなりません。" };
+      if (p.heirsCount === null) return { status: "check", reason: "相続人の人数が分かると、共有になるかどうかが分かります。" };
+      return { status: "applies", reason: `相続人が${p.heirsCount}人いるため、そのままだと共有名義になります。` };
+    },
+  },
+  {
+    id: "plan-boundary",
+    group: "plan",
+    title: "隣の土地との境目を、事情を知る人がいるうちに確かめる",
+    summary:
+      "境目がはっきりしないと、売るときに測量や隣の人の立ち会いが必要になり、時間がかかります。昔の取り決めを知っている親や近所の人がいるうちに、境目の杭の場所や、話し合ったことを聞いておきます。",
+    where: "親・近所の人。正式な確認は土地家屋調査士",
+    sources: [SRC.nagoyaKyokai],
+    evaluate(p) {
+      if (isOwnerAlive(p)) {
+        return { status: "applies", reason: "持ち主が元気なうちに聞いておくと、あとで調べる手間が大きく減ります。" };
+      }
+      return { status: "applies", reason: "売る・貸すときに、境目が分からないと手続きが止まることがあります。" };
+    },
+  },
+
   // ───────────── 放置しないための管理 ─────────────
   {
     id: "patrol",
@@ -701,6 +742,18 @@ export const CHECKLIST: ChecklistItem[] = [
     sources: [SRC.mlitKanriFuzen],
     evaluate() {
       return { status: "applies", reason: "方針が決まるまでの間に、税負担が増えるのを防ぐためです。" };
+    },
+  },
+  {
+    id: "manage-scam",
+    group: "manage",
+    title: "「引き取ります」「買い手がいます」という勧誘に気をつける",
+    summary:
+      "売れにくい土地を持つ人に、「買い手がいる」「引き取る」と持ちかけ、調査費・測量費・名義変更料などを先に払わせる被害の相談が続いています。お金を先に求められたら、その場で決めずに家族や市町村に相談してください。",
+    where: "消費者ホットライン「188」（近くの消費生活センターにつながります）",
+    sources: [SRC.kyotoGenya],
+    evaluate() {
+      return { status: "applies", reason: "遠方に住んでいると、地元の業者かどうかを確かめにくいためです。" };
     },
   },
 ];
