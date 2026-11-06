@@ -241,6 +241,7 @@ export function App() {
               progress={progress}
               onProgress={(id, v) => setProgress((prev) => ({ ...prev, [id]: v }))}
               onAnswer={(field, value) => setProfile((prev) => ({ ...prev, [field]: value }))}
+              claudeReady={claudeReady}
             />
           </div>
         )}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { GROUPS, groupEvaluated, type EvaluatedItem, type Group } from "../domain/checklist";
 import { daysBetween, formatJapaneseDate, type ISODate } from "../domain/dates";
 import type { Profile, Tri, TriField } from "../domain/profile";
+import { AskBox } from "./AskBox";
 import type { Progress } from "../storage";
 
 interface Props {
@@ -12,6 +13,8 @@ interface Props {
   onProgress: (id: string, value: Progress) => void;
   /** リスト上の質問に答えたとき */
   onAnswer: (field: TriField, value: Tri) => void;
+  /** AIに質問できるか */
+  claudeReady: boolean;
 }
 
 
@@ -80,6 +83,7 @@ function ItemCard({
   progress,
   onProgress,
   onAnswer,
+  claudeReady,
 }: {
   e: EvaluatedItem;
   today: ISODate;
@@ -87,6 +91,7 @@ function ItemCard({
   progress: Progress;
   onProgress: (value: Progress) => void;
   onAnswer: (field: TriField, value: Tri) => void;
+  claudeReady: boolean;
 }) {
   const nextVisit = profile.nextVisit;
   const [open, setOpen] = useState(false);
@@ -133,7 +138,7 @@ function ItemCard({
         aria-expanded={open}
         className="mt-3 min-h-10 font-semibold text-accent underline-offset-4 hover:underline"
       >
-        {open ? "▲ 説明を閉じる" : "▼ くわしい説明（何をする・どこで・根拠）"}
+        {open ? "▲ 説明を閉じる" : claudeReady ? "▼ くわしい説明・AIに質問する" : "▼ くわしい説明（何をする・どこで・根拠）"}
       </button>
 
       {open && (
@@ -166,6 +171,7 @@ function ItemCard({
               </ul>
             </div>
           )}
+          {claudeReady && <AskBox itemId={item.id} profile={profile} />}
         </div>
       )}
     </li>
@@ -205,6 +211,7 @@ function GroupSection({
             progress={props.progress[e.item.id] ?? "todo"}
             onProgress={(v) => props.onProgress(e.item.id, v)}
             onAnswer={props.onAnswer}
+            claudeReady={props.claudeReady}
           />
         ))}
       </ul>

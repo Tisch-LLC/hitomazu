@@ -3,6 +3,7 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { isISODate, type ISODate } from "../domain/dates";
 import { SITUATION_LABELS, type Profile, type Situation, type Tri, type TriField } from "../domain/profile";
+import { fallbackParams, toUserFacingError, UserFacingError } from "./claude";
 import type { ClaudeConfig } from "./config";
 
 /**
@@ -152,25 +153,15 @@ export function toProfileUpdates(out: UnderstandOutput, today: ISODate): Underst
 
 // ───────────── Claude の呼び出し ─────────────
 
-export class UnderstandError extends Error {
-  constructor(
-    message: string,
-    readonly userMessage: string,
-  ) {
-    super(message);
-  }
-}
-
 export async function understandSituation(text: string, today: ISODate, config: ClaudeConfig): Promise<UnderstandResult> {
-  if (!config.apiKey) throw new UnderstandError("API key is not configured", "いまは文章の読み取りが使えません。質問に答えて進んでください。");
+  if (!config.apiKey) throw new UserFacingError("API key is not configured", "いまは文章の読み取りが使えません。質問に答えて進んでください。");
   const client = new Anthropic({ apiKey: config.apiKey });
 
   try {
     const response = await client.beta.messages.parse({
       model: config.model,
       max_tokens: 4000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
+      ...fallbackParams(),
       output_config: { effort: "low", format: betaZodOutputFormat(UnderstandSchema) },
       system: SYSTEM_PROMPT,
       messages: [
@@ -182,23 +173,13 @@ export async function understandSituation(text: string, today: ISODate, config: 
     });
 
     if (response.stop_reason === "refusal") {
-      throw new UnderstandError("refused", "この文章は読み取れませんでした。質問に答えて進んでください。");
+      throw new UserFacingError("refused", "この文章は読み取れませんでした。質問に答えて進んでください。");
     }
     if (!response.parsed_output) {
-      throw new UnderstandError(`no parsed output (stop_reason: ${response.stop_reason})`, "うまく読み取れませんでした。もう一度試すか、質問に答えて進んでください。");
+      throw new UserFacingError(`no parsed output (stop_reason: ${response.stop_reason})`, "うまく読み取れませんでした。もう一度試すか、質問に答えて進んでください。");
     }
     return toProfileUpdates(response.parsed_output, today);
   } catch (error) {
-    if (error instanceof UnderstandError) throw error;
-    if (error instanceof Anthropic.RateLimitError) {
-      throw new UnderstandError("rate limited", "いま混み合っています。少し待ってからもう一度試してください。");
-    }
-    if (error instanceof Anthropic.AuthenticationError) {
-      throw new UnderstandError("authentication failed", "いまは文章の読み取りが使えません。質問に答えて進んでください。");
-    }
-    if (error instanceof Anthropic.APIError) {
-      throw new UnderstandError(`API error ${error.status}`, "うまく読み取れませんでした。もう一度試すか、質問に答えて進んでください。");
-    }
-    throw error;
+    throw toUserFacingError(error, "うまく読み取れませんでした。もう一度試すか、質問に答えて進んでください。");
   }
 }
