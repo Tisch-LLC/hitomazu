@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChecklistView } from "./components/ChecklistView";
 import { FreeText } from "./components/FreeText";
 import { Interview } from "./components/Interview";
+import { LogoMark } from "./components/Logo";
 import { RiskPanel } from "./components/RiskPanel";
 import { SheetPreview } from "./components/SheetPreview";
 import { SheetWizard } from "./components/SheetWizard";
@@ -14,7 +15,7 @@ import { buildSheet, EMPTY_SHEET, type SheetAnswers } from "./domain/sheet";
 import { clearState, loadState, saveState, type Progress, type Stage } from "./storage";
 import "./index.css";
 
-export const APP_NAME = "実家のこれから";
+export const APP_NAME = "ひとまず";
 
 function Intro({
   claudeReady,
@@ -29,11 +30,17 @@ function Intro({
 }) {
   return (
     <div className="mx-auto max-w-2xl py-10 sm:py-14">
-      <p className="font-semibold text-accent">離れて暮らす実家のための手続きナビ</p>
-      <h1 className="mt-3 text-3xl font-bold leading-tight text-ink sm:text-4xl">
+      <div className="flex items-center gap-3">
+        <LogoMark size={56} className="text-accent" />
+        <div>
+          <p className="text-2xl font-bold text-ink">{APP_NAME}</p>
+          <p className="font-semibold text-accent">離れて暮らす実家のための手続きナビ</p>
+        </div>
+      </div>
+      <h1 className="mt-6 text-3xl font-bold leading-tight text-ink sm:text-4xl">
         実家のこと、
         <br />
-        何を、いつまでに？
+        ひとまず、何を、いつまでに？
       </h1>
       <p className="mt-5 text-lg leading-relaxed text-ink">
         親が施設に入った。親が亡くなった。親が一人で暮らしていて、この先が心配。
@@ -165,7 +172,10 @@ export function App() {
     <div className="min-h-screen">
       <header className="app-header sticky top-0 z-10 border-b border-line bg-page/90 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3">
-          <span className="font-bold text-ink">{APP_NAME}</span>
+          <span className="flex items-center gap-2 text-lg font-bold text-ink">
+            <LogoMark size={26} />
+            {APP_NAME}
+          </span>
           {stage !== "intro" && (
             <button type="button" onClick={reset} className="text-sm text-muted hover:text-ink">
               最初からやり直す
