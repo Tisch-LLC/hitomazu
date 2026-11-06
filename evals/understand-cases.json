@@ -1,0 +1,63 @@
+[
+  {
+    "id": "facility-matsue",
+    "text": "東京に住んでいます。松江市の実家に母が一人で住んでいましたが、今年の春に認知症が進んで施設に入りました。家は祖父の代に建てたもので、裏に小さな畑があります。兄が一人いて、お正月に一緒に帰る予定です。",
+    "expect": { "situation": "owner_moved", "ownerCanDecide": "no", "propertyAddress": "松江市", "hasFarmland": "yes" },
+    "mustBeEmpty": ["deathDate", "nextVisit", "builtOld", "heirsCount"]
+  },
+  {
+    "id": "inherited-dated",
+    "text": "父が2026年9月20日に亡くなりました。実家は島根県出雲市です。相続人は母と私と妹の3人です。借金はないと思います。父は年金だけで、確定申告はしていませんでした。",
+    "expect": { "situation": "inherited", "deathDate": "2026-09-20", "heirsCount": 3, "propertyAddress": "出雲市", "debtConcern": "no", "deceasedHadIncome": "no" },
+    "mustBeEmpty": ["hasWill", "hasFarmland", "nextVisit"]
+  },
+  {
+    "id": "owner-living",
+    "text": "浜田市で父が一人暮らしをしています。まだ元気で、自分のことは自分で決められます。家は昭和45年に建てたと聞いています。この先どうするか、今のうちに考えておきたいです。",
+    "expect": { "situation": "owner_living", "ownerCanDecide": "yes", "propertyAddress": "浜田市", "builtOld": "yes" },
+    "mustBeEmpty": ["deathDate", "heirsCount", "hasFarmland"]
+  },
+  {
+    "id": "already-owned",
+    "text": "5年前に母から相続して、もう名義は私になっています。益田市の家で、誰も住んでいません。山林も少しあります。使い道を考えたいです。",
+    "expect": { "situation": "already_owned", "propertyAddress": "益田市", "hasForest": "yes" },
+    "mustBeEmpty": ["deathDate", "ownerCanDecide"]
+  },
+  {
+    "id": "vague-dates",
+    "text": "先月、祖母が亡くなりました。家は大田市です。秋ごろに一度帰るつもりです。遺言があるかどうかは分かりません。",
+    "expect": { "situation": "inherited", "propertyAddress": "大田市", "hasWill": "unknown" },
+    "mustBeEmpty": ["deathDate", "nextVisit", "heirsCount"]
+  },
+  {
+    "id": "debt-worry",
+    "text": "叔父が亡くなり、甥の私が相続人になるかもしれないと言われました。叔父には借金があったようで心配です。家は安来市にあり、築60年くらいです。",
+    "expect": { "situation": "inherited", "debtConcern": "yes", "propertyAddress": "安来市", "builtOld": "yes" },
+    "mustBeEmpty": ["deathDate", "heirsCount"]
+  },
+  {
+    "id": "hospital-long",
+    "text": "母が去年から入院していて、退院の見込みはありません。話はできますが、難しいことを決めるのは無理だと思います。家は雲南市で、田んぼもあります。12月28日に帰省します。",
+    "expect": { "situation": "owner_moved", "ownerCanDecide": "no", "propertyAddress": "雲南市", "hasFarmland": "yes", "nextVisit": "2026-12-28" },
+    "mustBeEmpty": ["deathDate"]
+  },
+  {
+    "id": "no-address-number",
+    "text": "松江市東津田町1234-5の実家です。父が施設に入りました。",
+    "expect": { "situation": "owner_moved" },
+    "mustBeEmpty": ["deathDate"],
+    "addressMustNotContain": "1234"
+  },
+  {
+    "id": "newer-house",
+    "text": "亡くなった母の家を兄と私の2人で相続します。家は平成10年に建て替えたばかりで、母は一人で住んでいました。畑や山はありません。",
+    "expect": { "situation": "inherited", "heirsCount": 2, "builtOld": "no", "deceasedLivedAlone": "yes", "hasFarmland": "no", "hasForest": "no" },
+    "mustBeEmpty": ["deathDate", "propertyAddress"]
+  },
+  {
+    "id": "off-topic",
+    "text": "今日はいい天気ですね。",
+    "expect": {},
+    "mustBeEmpty": ["situation", "deathDate", "propertyAddress", "heirsCount"]
+  }
+]

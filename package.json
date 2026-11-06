@@ -7,7 +7,10 @@
     "dev": "bun --hot src/index.ts",
     "start": "NODE_ENV=production bun src/index.ts",
     "build": "bun run build.ts",
-    "typecheck": "bun check"
+    "typecheck": "bun check",
+    "test": "bun test",
+    "eval:understand": "bun evals/run-understand.ts",
+    "eval:ask": "bun evals/run-ask.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.5.0",
