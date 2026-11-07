@@ -42,6 +42,39 @@ export interface Source {
   url: string;
 }
 
+/** 相談先の種類（特定の事務所への紹介ではなく、誰に聞けばよいかの目印） */
+export type Adviser =
+  | "市町村"
+  | "法務局"
+  | "税務署"
+  | "家庭裁判所"
+  | "農業委員会"
+  | "公証役場"
+  | "司法書士"
+  | "税理士"
+  | "弁護士"
+  | "土地家屋調査士"
+  | "不動産会社"
+  | "地域包括支援センター"
+  | "消費生活センター";
+
+/** 相談先の種類ごとの、ひとことの説明 */
+export const ADVISER_NOTES: Record<Adviser, string> = {
+  市町村: "実家のある市町村の窓口（空き家対策・資産税・林務など）",
+  法務局: "登記（名義）や登記事項証明書の窓口",
+  税務署: "相続税・所得税・売ったときの税金の窓口",
+  家庭裁判所: "相続放棄や、遺言書の検認の手続き",
+  農業委員会: "田・畑の相続の届出や、売る・貸す・転用の許可",
+  公証役場: "公正証書遺言の有無の照会",
+  司法書士: "相続登記（名義の変更）や、相続人の確定の相談",
+  税理士: "相続税・準確定申告・売ったときの税金の相談",
+  弁護士: "相続放棄の判断、相続人どうしの争い、借金の整理",
+  土地家屋調査士: "境界の確認・測量",
+  不動産会社: "売る・貸すときの相談と査定",
+  地域包括支援センター: "持ち主の判断能力が心配なときの相談（成年後見など）",
+  消費生活センター: "不審な勧誘やトラブルの相談（電話 188）",
+};
+
 /** applies：対応が必要／check：入力が足りず、当てはまるか確認が必要／not_applicable：対象外 */
 export type Applicability = "applies" | "check" | "not_applicable";
 
@@ -69,6 +102,8 @@ export interface ChecklistItem {
   situations?: Situation[];
   /** 「要確認」のときに、リストの上で答えられる質問 */
   followUps?: FollowUp[];
+  /** 相談先の種類 */
+  advisers?: Adviser[];
   title: string;
   /** 何をするか、なぜ必要か */
   summary: string;
@@ -184,6 +219,7 @@ export const CHECKLIST: ChecklistItem[] = [
   // ───────────── 期限があるもの ─────────────
   {
     id: "inheritance-decision",
+    advisers: ["家庭裁判所", "弁護士", "司法書士"],
     situations: INHERITED,
     followUps: [{ field: "debtConcern", question: "亡くなった方に、借金や保証人になっている心配はありますか？" }],
     group: "deadline",
@@ -221,6 +257,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "jun-kakutei",
+    advisers: ["税務署", "税理士"],
     situations: INHERITED,
     followUps: [{ field: "deceasedHadIncome", question: "亡くなった方は、毎年確定申告をしていましたか？" }],
     group: "deadline",
@@ -247,6 +284,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "souzokuzei",
+    advisers: ["税務署", "税理士"],
     situations: INHERITED,
     followUps: [{ field: "estateMayExceedBasic", question: "預金や不動産などの遺産は、合計で基礎控除を超えそうですか？" }],
     group: "deadline",
@@ -276,6 +314,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "souzoku-touki",
+    advisers: ["法務局", "司法書士"],
     situations: INHERITED,
     group: "deadline",
     title: "相続登記（実家の名義を変える）",
@@ -306,6 +345,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "nouchi-todoke",
+    advisers: ["農業委員会"],
     situations: INHERITED,
     followUps: [{ field: "hasFarmland", question: "実家の土地に、田や畑は含まれますか？" }],
     group: "deadline",
@@ -330,6 +370,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "shinrin-todoke",
+    advisers: ["市町村"],
     situations: INHERITED,
     followUps: [{ field: "hasForest", question: "実家の土地に、山林は含まれますか？" }],
     group: "deadline",
@@ -353,6 +394,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "akiya-special",
+    advisers: ["税務署", "税理士", "市町村"],
     situations: INHERITED,
     followUps: [
       { field: "builtOld", question: "昭和56年（1981年）5月より前に建てられた家ですか？" },
@@ -396,6 +438,7 @@ export const CHECKLIST: ChecklistItem[] = [
   // ───────────── 遠隔でできるもの ─────────────
   {
     id: "owner-decision",
+    advisers: ["地域包括支援センター", "司法書士", "弁護士"],
     situations: OWNER_ALIVE,
     followUps: [{ field: "ownerCanDecide", question: "持ち主は、自分で契約などを判断できる状態ですか？" }],
     group: "remote",
@@ -423,6 +466,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "will",
+    advisers: ["公証役場", "法務局", "家庭裁判所"],
     situations: INHERITED,
     group: "remote",
     title: "遺言書があるか確認する",
@@ -437,6 +481,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "koseki",
+    advisers: ["市町村", "司法書士"],
     situations: INHERITED,
     group: "remote",
     title: "戸籍を集めて、相続人を確定する",
@@ -450,6 +495,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "touki-shoumei",
+    advisers: ["法務局"],
     group: "remote",
     title: "実家の登記事項証明書を取る",
     summary:
@@ -463,6 +509,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "assets-debts",
+    advisers: ["弁護士", "司法書士"],
     situations: INHERITED,
     group: "remote",
     title: "財産と借金の全体をつかむ",
@@ -478,6 +525,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "tax-notice",
+    advisers: ["市町村"],
     situations: ["inherited", "owner_moved"],
     group: "remote",
     title: "固定資産税の納税通知書が、確実に届くようにする",
@@ -628,6 +676,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "plan-condition",
+    advisers: ["市町村"],
     group: "plan",
     title: "建物の状態から、使い続けられるかの目安をつける",
     summary:
@@ -650,6 +699,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "plan-land",
+    advisers: ["農業委員会", "市町村", "不動産会社"],
     group: "plan",
     title: "田畑・山林がある場合の手続きを確認する",
     summary:
@@ -676,6 +726,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "plan-local",
+    advisers: ["市町村", "不動産会社"],
     group: "plan",
     title: "地元の相談先を見つける",
     summary:
@@ -690,6 +741,7 @@ export const CHECKLIST: ChecklistItem[] = [
 
   {
     id: "plan-co-ownership",
+    advisers: ["司法書士", "税理士"],
     situations: INHERITED,
     group: "plan",
     title: "実家を「共有名義」のままにしない方向で話し合う",
@@ -705,6 +757,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "plan-boundary",
+    advisers: ["土地家屋調査士"],
     group: "plan",
     title: "隣の土地との境目を、事情を知る人がいるうちに確かめる",
     summary:
@@ -733,6 +786,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "kanri-fuzen",
+    advisers: ["市町村"],
     situations: VACANT,
     group: "manage",
     title: "「管理不全空家」にならないようにする",
@@ -746,6 +800,7 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: "manage-scam",
+    advisers: ["消費生活センター"],
     group: "manage",
     title: "「引き取ります」「買い手がいます」という勧誘に気をつける",
     summary:

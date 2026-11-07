@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { CHECKLIST, evaluateChecklist, groupEvaluated } from "./checklist";
+import { ADVISER_NOTES, CHECKLIST, evaluateChecklist, groupEvaluated } from "./checklist";
 import { EMPTY_PROFILE, type Profile } from "./profile";
 import { SAMPLE_PROFILE } from "./sample";
 
@@ -194,4 +194,11 @@ test("要確認でも期限が近ければ先に並ぶ", () => {
   const grouped = groupEvaluated(evaluateChecklist(SAMPLE_PROFILE));
   // 森林の届出（要確認、12/19）が相続放棄（要対応、12/20）より先
   expect(grouped.deadline[0]?.item.id).toBe("shinrin-todoke");
+});
+
+test("相談先の種類は、説明のある種類だけを使う。期限のある項目には必ず相談先がある", () => {
+  for (const item of CHECKLIST) {
+    for (const a of item.advisers ?? []) expect(ADVISER_NOTES[a]).toBeTruthy();
+    if (item.deadline) expect((item.advisers ?? []).length).toBeGreaterThan(0);
+  }
 });

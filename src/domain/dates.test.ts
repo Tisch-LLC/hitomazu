@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { addDays, addMonthsClamped, addYearsClamped, daysBetween, formatJapaneseDate, isISODate } from "./dates";
+import { addDays, addMonthsClamped, addYearsClamped, daysBetween, formatJapaneseDate, isISODate, todayJST } from "./dates";
 
 describe("addMonthsClamped（nか月以内の期限）", () => {
   test("同じ日付の nか月後になる", () => {
@@ -40,4 +40,9 @@ test("isISODate", () => {
 
 test("formatJapaneseDate", () => {
   expect(formatJapaneseDate("2027-02-01")).toBe("2027年2月1日（月）");
+});
+
+test("todayJST：UTC の深夜でも日本時間の日付になる", () => {
+  expect(todayJST(new Date("2026-11-06T16:00:00Z"))).toBe("2026-11-07");
+  expect(todayJST(new Date("2026-11-06T14:00:00Z"))).toBe("2026-11-06");
 });

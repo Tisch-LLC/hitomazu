@@ -1,0 +1,39 @@
+# Cloudflare Workers の設定（画面は静的アセット、/api/ は Worker）
+#
+# 公開の手順：
+#   bun run build                              # dist/ に画面をビルド
+#   bunx wrangler login                        # 初回だけ。ブラウザで Cloudflare にログイン
+#   bunx wrangler secret put ANTHROPIC_API_KEY # APIキーを secret として登録（画面に出ない）
+#   bunx wrangler deploy                       # 公開。https://hitomazu.<アカウント名>.workers.dev
+#
+# 金額の上限は、Claude Console のワークスペースの利用上限でも必ず設定すること。
+
+name = "hitomazu"
+main = "src/worker.ts"
+compatibility_date = "2026-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[vars]
+CLAUDE_MODEL = "claude-opus-5-5"
+# アプリ全体で1日に Claude を呼べる回数（USAGE_KV がある場合に有効）
+CLAUDE_DAILY_LIMIT = "300"
+# binding がない場合に使う、メモリ上の上限（インスタンスごと）
+CLAUDE_PER_CLIENT_LIMIT = "10"
+CLAUDE_PER_CLIENT_WINDOW_MINUTES = "10"
+
+# 同じ利用者（IPアドレス）からの呼び出しを、1分あたり10回までにする
+[[ratelimits]]
+name = "CLAUDE_RL"
+namespace_id = "1001"
+simple = { limit = 10, period = 60 }
+
+# 1日あたりの全体の回数を数える KV。使うときは次を実行し、出てきた id を入れて有効にする：
+#   bunx wrangler kv namespace create USAGE_KV
+# [[kv_namespaces]]
+# binding = "USAGE_KV"
+# id = "ここに id"

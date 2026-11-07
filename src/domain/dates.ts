@@ -87,6 +87,11 @@ export function todayISO(now: Date = new Date()): ISODate {
   return `${y}-${m}-${d}`;
 }
 
+/** 日本時間での今日（サーバー側で使う。実行環境の時間帯に左右されない） */
+export function todayJST(now: Date = new Date()): ISODate {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
 /** 例：2027年2月1日（月） */

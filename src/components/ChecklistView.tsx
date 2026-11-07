@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GROUPS, groupEvaluated, type EvaluatedItem, type Group } from "../domain/checklist";
+import { ADVISER_NOTES, GROUPS, groupEvaluated, type EvaluatedItem, type Group } from "../domain/checklist";
 import { daysBetween, formatJapaneseDate, type ISODate } from "../domain/dates";
 import type { Profile, Tri, TriField } from "../domain/profile";
 import { AskBox } from "./AskBox";
@@ -117,6 +117,16 @@ function ItemCard({
             </p>
           )}
           <p className="mt-1 text-sm text-muted">{evaluation.reason}</p>
+          {item.advisers && item.advisers.length > 0 && (
+            <p className="mt-2 flex flex-wrap items-center gap-1.5 text-sm">
+              <span className="text-muted">相談先：</span>
+              {item.advisers.map((a) => (
+                <span key={a} title={ADVISER_NOTES[a]} className="rounded-md border border-line bg-surface px-2 py-0.5 font-semibold text-ink">
+                  {a}
+                </span>
+              ))}
+            </p>
+          )}
         </div>
         <button
           type="button"
