@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { EMPTY_PROFILE } from "../domain/profile";
 import { SAMPLE_PROFILE } from "../domain/sample";
-import { buildItemContext, sanitizeProfile } from "./ask";
+import { buildItemContext, sanitizeProfile, toAskUpdates } from "./ask";
 import { UserFacingError } from "./claude";
 
 test("項目の情報に、説明・理由・期限・出典の番号が入る", () => {
@@ -41,4 +41,22 @@ test("送られた状況は、知っている項目と正しい値だけを取�
 test("おかしな入力でも空の状況になる", () => {
   expect(sanitizeProfile(null)).toEqual(EMPTY_PROFILE);
   expect(sanitizeProfile("x")).toEqual(EMPTY_PROFILE);
+});
+
+test("質問文に書かれた事実は、いまの状況と違うものだけを反映候補にする", () => {
+  const updates = toAskUpdates(
+    [
+      { field: "hasFarmland", value: "no", quote: "畑はありません" },
+      { field: "hasFarmland", value: "no", quote: "重複" },
+      { field: "builtOld", value: "yes", quote: "築60年" },
+      { field: "hasForest", value: "no", quote: "山はないです" },
+    ],
+    { ...SAMPLE_PROFILE, builtOld: "yes" },
+  );
+  expect(updates.map((u) => [u.field, u.value])).toEqual([
+    ["hasFarmland", "no"],
+    ["hasForest", "no"],
+  ]);
+  expect(updates[0]?.label).toBe("田・畑：含まれない");
+  expect(updates[0]?.quote).toBe("畑はありません");
 });

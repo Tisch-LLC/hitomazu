@@ -181,7 +181,7 @@ function ItemCard({
               </ul>
             </div>
           )}
-          {claudeReady && <AskBox itemId={item.id} profile={profile} />}
+          {claudeReady && <AskBox itemId={item.id} profile={profile} onApply={onAnswer} />}
         </div>
       )}
     </li>

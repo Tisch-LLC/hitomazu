@@ -90,7 +90,7 @@ export interface UnderstandResult {
   unclear: string[];
 }
 
-const TRI_FIELDS: { field: TriField; name: string; yes: string; no: string }[] = [
+export const TRI_FIELDS: { field: TriField; name: string; yes: string; no: string }[] = [
   { field: "ownerCanDecide", name: "持ち主の判断", yes: "自分で判断できる", no: "自分で判断するのは難しい" },
   { field: "debtConcern", name: "借金の心配", yes: "ある", no: "ない" },
   { field: "hasWill", name: "遺言書", yes: "ある", no: "ない" },
@@ -104,7 +104,7 @@ const TRI_FIELDS: { field: TriField; name: string; yes: string; no: string }[] =
 
 const TRI_UNKNOWN_LABEL = "分からない";
 
-function triLabel(value: Tri, yes: string, no: string): string {
+export function triLabel(value: Tri, yes: string, no: string): string {
   return value === "yes" ? yes : value === "no" ? no : TRI_UNKNOWN_LABEL;
 }
 

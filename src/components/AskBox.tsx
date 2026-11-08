@@ -1,21 +1,31 @@
 import { useState } from "react";
-import type { Profile } from "../domain/profile";
+import type { Profile, Tri, TriField } from "../domain/profile";
 
 interface Props {
   itemId: string;
   profile: Profile;
+  /** 質問文から読み取った事実を、やることリストに反映する */
+  onApply: (field: TriField, value: Tri) => void;
+}
+
+interface Update {
+  field: TriField;
+  value: Tri;
+  label: string;
+  quote: string | null;
 }
 
 interface Answer {
   answer: string;
   sources: { label: string; url: string }[];
   confirmWith: string;
+  updates: Update[];
 }
 
 const SUGGESTIONS = ["何を準備すればいい？", "遠くに住んでいても、できる？", "家族に代わりに頼める？", "費用はかかる？"];
 
 /** やることリストの1項目について、AIに質問する欄 */
-export function AskBox({ itemId, profile }: Props) {
+export function AskBox({ itemId, profile, onApply }: Props) {
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +45,7 @@ export function AskBox({ itemId, profile }: Props) {
       });
       const data = (await res.json()) as Partial<Answer> & { error?: string };
       if (!res.ok || !data.answer) setError(data.error ?? "うまく答えられませんでした。");
-      else setAnswer({ answer: data.answer, sources: data.sources ?? [], confirmWith: data.confirmWith ?? "" });
+      else setAnswer({ answer: data.answer, sources: data.sources ?? [], confirmWith: data.confirmWith ?? "", updates: data.updates ?? [] });
     } catch {
       setError("インターネットにつながっていないようです。つながる場所で、もう一度試してください。");
     } finally {
@@ -102,6 +112,31 @@ export function AskBox({ itemId, profile }: Props) {
             </p>
           )}
           {answer.confirmWith && <p className="text-sm font-semibold text-ink">最終的な確認先：{answer.confirmWith}</p>}
+          {answer.updates.length > 0 && (
+            <div className="rounded-lg bg-accent-soft/60 p-3">
+              <p className="text-sm font-semibold text-ink">質問の中に、状況が書かれていました。やることリストに反映しますか？</p>
+              <ul className="mt-2 space-y-2">
+                {answer.updates.map((u) => (
+                  <li key={u.field} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span>
+                      <span className="font-semibold text-ink">{u.label}</span>
+                      {u.quote && <span className="ml-1 text-muted">（「{u.quote}」より）</span>}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onApply(u.field, u.value);
+                        setAnswer({ ...answer, updates: answer.updates.filter((x) => x.field !== u.field) });
+                      }}
+                      className="rounded-md border-2 border-accent bg-surface px-3 py-1 font-semibold text-accent hover:bg-accent hover:text-white"
+                    >
+                      反映する
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <p className="text-xs text-muted">AIの回答です。間違いがあるかもしれません。大事なことは、必ず窓口や専門家に確かめてください。</p>
         </div>
       )}

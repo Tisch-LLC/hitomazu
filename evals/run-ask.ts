@@ -19,6 +19,8 @@ interface Case {
   expectOutOfScope?: boolean;
   mustInclude?: string[];
   mustNotInclude?: string[];
+  expectFacts?: { field: string; value: string }[];
+  expectNoFacts?: boolean;
 }
 
 const config = readClaudeConfig();
@@ -39,7 +41,11 @@ for (const { c, r } of results) {
   }
   for (const w of c.mustInclude ?? []) if (!text.includes(w)) failures.push(`${c.id}: 「${w}」が含まれていない`);
   for (const w of c.mustNotInclude ?? []) if (text.includes(w)) failures.push(`${c.id}: 「${w}」が含まれている`);
-  console.log(`\n[${c.id}] ${c.question}\n→ ${r.answer}\n  確認先：${r.confirmWith}`);
+  for (const f of c.expectFacts ?? []) {
+    if (!r.updates.some((u) => u.field === f.field && u.value === f.value)) failures.push(`${c.id}: 事実 ${f.field}=${f.value} を読み取っていない`);
+  }
+  if (c.expectNoFacts && r.updates.length > 0) failures.push(`${c.id}: 質問の形なのに事実として読み取った（${r.updates.map((u) => u.field).join(",")}）`);
+  console.log(`\n[${c.id}] ${c.question}\n→ ${r.answer}\n  確認先：${r.confirmWith}${r.updates.length ? `\n  反映候補：${r.updates.map((u) => u.label).join("、")}` : ""}`);
 }
 
 console.log(`\n例 ${results.length} 件 / モデル ${config.model}`);
