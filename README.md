@@ -123,3 +123,7 @@ cp .env.example .env
 ## 制作の経緯
 
 2026-11-02 に `bun init --react=tailwind`（bun 1.4.4）で生成した雛形から開始しました。初期コミット以降の変更が、ハッカソン期間中に作成した部分です。
+
+## ライセンス
+
+MIT License（[LICENSE](LICENSE)）。制度の説明文に添えた出典は、各発行元のページに帰属します。
