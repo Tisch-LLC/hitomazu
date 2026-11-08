@@ -49,6 +49,8 @@
 
 ## 公開（Cloudflare Workers）
 
+公開中：https://hitomazu.tanoue.workers.dev
+
 画面は Workers の静的アセットとして配信し、`/api/` だけを Worker（`src/worker.ts`）で処理します。設定は `wrangler.toml` にあります。
 
 ```bash
