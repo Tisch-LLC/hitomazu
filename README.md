@@ -12,3 +12,5 @@
 - sample-lower-light：文字を入れた見本
 
 色：緑 #2f6b55、深緑 #1e4d3c、文字 #1f2a24、生成り #f7f5f0
+
+- thumbnail-dark / thumbnail-light：YouTube 用サムネイル（1280×720）
