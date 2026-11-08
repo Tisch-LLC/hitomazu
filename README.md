@@ -10,7 +10,7 @@
 
 ## デモ動画
 
-準備中です。
+[3分のデモ動画（YouTube）](https://youtu.be/jPfrTS_zrGU)
 
 始め方は2つあります。
 
